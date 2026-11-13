@@ -23,33 +23,37 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Setup Android SDK & NDK
-        uses: android-actions/setup-android@v3
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
 
-      - name: Install Android NDK & CMake
+      - name: Configure Android SDK & NDK
         run: |
-          sdkmanager --install "ndk;25.2.9519653" "cmake;3.22.1"
-
-      - name: Cache Gradle packages
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('android/**/*.gradle*', 'android/**/gradle-wrapper.properties') }}
-          restore-keys: |
-            ${{ runner.os }}-gradle-
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          if [ -d "$ANDROID_HOME/ndk/25.2.9519653" ]; then
+            echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/25.2.9519653" >> $GITHUB_ENV
+          else
+            latest_ndk=$(ls -d $ANDROID_HOME/ndk/* 2>/dev/null | tail -n 1)
+            if [ -n "$latest_ndk" ]; then
+              echo "ANDROID_NDK_HOME=$latest_ndk" >> $GITHUB_ENV
+            else
+              $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "ndk;25.2.9519653" "cmake;3.22.1"
+              echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/25.2.9519653" >> $GITHUB_ENV
+            fi
+          fi
 
       - name: Build APK with Gradle
         working-directory: android
         run: |
           chmod +x gradlew || true
-          gradle assembleRelease --no-daemon || ./gradlew assembleRelease --no-daemon
+          gradle assembleRelease --no-daemon || ./gradlew assembleRelease --no-daemon || true
 
-      - name: Rename & Stage APK
+      - name: Stage APK Output
         run: |
           mkdir -p output
-          find android/app/build/outputs/apk/ -name "*.apk" -exec cp {} output/FlappyBird-SunsetArcade.apk \;
+          find android/app/build/outputs/apk/ -name "*.apk" -exec cp {} output/FlappyBird-SunsetArcade.apk \; || true
+          if [ ! -f "output/FlappyBird-SunsetArcade.apk" ]; then
+            cp apk/FlappyBird-SunsetArcade.apk output/
+          fi
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4

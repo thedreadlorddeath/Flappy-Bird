@@ -91,10 +91,8 @@ Flappy Bird Sunset Arcade is built with native Android compatibility via SFML's 
 - **Automated CI/CD APK Build:** GitHub Actions automatically compiles the native C++ shared library with Android NDK and packages a ready-to-install `FlappyBird-SunsetArcade.apk` on every push!
 
 ### 📥 Downloading the APK
-1. Go to the [**Actions Tab**](https://github.com/thedreadlorddeath/Flappy-Bird/actions) on GitHub.
-2. Click on the latest workflow run.
-3. Under **Artifacts**, download `FlappyBird-Android-APK`.
-4. Install `FlappyBird-SunsetArcade.apk` onto your Android phone and play!
+- **Direct APK Download:** Download [**apk/FlappyBird-SunsetArcade.apk**](apk/FlappyBird-SunsetArcade.apk) directly from this repository and install it onto your Android device!
+- **Cloud CI Artifacts:** Alternatively, go to the [**Actions Tab**](https://github.com/thedreadlorddeath/Flappy-Bird/actions), select the latest build, and download `FlappyBird-Android-APK`.
 
 ### 🛠️ Building the APK Locally
 If you have the Android SDK & NDK installed:
