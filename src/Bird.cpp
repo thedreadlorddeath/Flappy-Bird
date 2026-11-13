@@ -83,13 +83,18 @@ sf::FloatRect Bird::getBounds() const {
     return sf::FloatRect(m_position.x - r, m_position.y - r, r * 2.0f, r * 2.0f);
 }
 
-void Bird::draw(sf::RenderWindow& window) {
+void Bird::draw(sf::RenderWindow& window, CosmeticsManager* cosmetics, float time) {
     sf::Transform transform;
     transform.translate(m_position);
     transform.rotate(m_rotation);
 
     sf::RenderStates states;
     states.transform = transform;
+
+    // Draw Outfit Back Layers (Capes, Jetpacks, Wings)
+    if (cosmetics) {
+        cosmetics->drawOutfit(window, transform, cosmetics->getEquippedOutfit(), time);
+    }
 
     // Outline color
     const sf::Color outlineColor(40, 22, 12);
@@ -207,4 +212,9 @@ void Bird::draw(sf::RenderWindow& window) {
     wingInner.setPoint(3, sf::Vector2f(-4.0f, 3.0f));
     wingInner.setFillColor(sf::Color(255, 215, 65));
     window.draw(wingInner, wingStates);
+
+    // Draw Equipped Hat (Headwear)
+    if (cosmetics) {
+        cosmetics->drawHat(window, transform, cosmetics->getEquippedHat(), time);
+    }
 }

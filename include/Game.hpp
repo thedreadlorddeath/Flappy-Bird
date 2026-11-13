@@ -7,12 +7,15 @@
 #include "ParticleSystem.hpp"
 #include "SoundGenerator.hpp"
 #include "UI.hpp"
+#include "Cosmetics.hpp"
 
 enum class GameState {
     GetReady,
     Playing,
     Paused,
-    GameOver
+    GameOver,
+    Cosmetics,
+    Scoreboard
 };
 
 class Game {
@@ -29,6 +32,7 @@ private:
     void updateViewLetterbox(unsigned int width, unsigned int height);
 
     void flapAction();
+    void handleScreenClicks(sf::Vector2f clickPos);
     void onCollision();
     void restartGame();
 
@@ -39,9 +43,11 @@ private:
     sf::View m_defaultView;
 
     GameState m_state;
+    GameState m_previousState;
     int m_score;
     int m_bestScore;
     bool m_isNewBest;
+    float m_globalTime;
 
     // Core Game Systems
     Bird m_bird;
@@ -50,4 +56,5 @@ private:
     ParticleSystem m_particleSystem;
     SoundGenerator m_soundGen;
     UI m_ui;
+    CosmeticsManager m_cosmetics;
 };

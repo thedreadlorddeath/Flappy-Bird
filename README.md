@@ -81,10 +81,42 @@ High scores persist across sessions in `highscore.txt`. Survive the pipes to ear
 
 ---
 
-## 📱 Android APK & Mobile Compatibility
+## 🎩 Wardrobe & Unlockable Cosmetics
 
-Flappy Bird Sunset Arcade is built with native Android compatibility via SFML's `NativeActivity`:
+Unlock custom procedural cosmetics by achieving high score thresholds! Every equipped cosmetic dynamically anchors to the bird, tilting and bobbing in real-time:
 
+| Score Required | 👒 Headwear / Hat | 🧥 Outfit / Jacket / Accessory |
+|:---:|:---|:---|
+| **Score 1** | **Karate Headband** (fluttering red warrior band) | *Default body* |
+| **Score 5** | **Aviator Goggles** (brass frames with cyan lens sheen) | **Flight Scarf** (fluttering woolen aviator scarf) |
+| **Score 10** | **Gentleman Top Hat** (silk top hat with crimson ribbon) | **Dapper Bowtie** (formal ruby silk bowtie) |
+| **Score 15** | **Cyber Neon Visor** (glowing cyan HUD laser eyepiece) | **Biker Vest** (leather vest with silver zipper) |
+| **Score 20** | **Royal Golden Crown** (jeweled 3-peaked monarch crown) | **Velvet Royal Cape** (flowing crimson cape with gold clasp) |
+| **Score 25** | **Mystic Wizard Hat** (star-crested sorcerer cone) | **Arcane Cowl** (mystical starry purple mantle) |
+| **Score 30** | **Phoenix Fire Crown** (blazing crown of animated fire flickers) | **Phoenix Flame Plumes** (combustion trail behind wing flaps) |
+| **Score 35** | **Astronaut Bubble** (pressurized space helmet dome) | **Space Jetpack** (twin-thruster boosters with cyan rocket exhaust) |
+| **Score 40** | **Celestial Platinum Halo** (floating starlight stardust halo) | **Celestial Mantle** (glowing ethereal angelic wings) |
+
+> 💡 **How to Access:** Click or tap the **`[C] WARDROBE`** button on the title or game over screen (or press `C`) to preview and equip unlocked items.
+
+---
+
+## 📊 Scoreboard & Milestones Screen
+
+Access the arcade scoreboard anytime by clicking **`[S] SCORES`** or pressing `S`:
+- **Personal Best Record & Rank:** Shows your all-time high score and current medal status.
+- **Cosmetic Milestones Checklist:** Live checklist showing which thresholds you've conquered and what item unlocks next.
+- **Completion Percentage:** Tracks your overall progress toward unlocking all 17 cosmetics!
+
+---
+
+## 📱 Android 9+ APK & Mobile Compatibility
+
+Flappy Bird Sunset Arcade is 100% compatible with Android 9 (API 28) through Android 15+:
+
+- **Full Signature Scheme v1, v2 & v3 Support:** Signed with `apksigner` and 4-byte/4096-byte page-aligned using `zipalign` to guarantee clean installation on all modern Android devices without "Package appears corrupt" errors.
+- **App Logo / Simple Bird Icon:** High-resolution icons in standard (`ic_launcher`) and circular (`ic_launcher_round`) formats across all densities (`mdpi` up to `xxxhdpi`).
+- **Native Security & Extraction:** Includes `network_security_config.xml` (disallowing unencrypted cleartext traffic) and `android:extractNativeLibs="true"` for seamless OEM ROM compatibility (Samsung OneUI, Xiaomi MIUI/HyperOS, OnePlus OxygenOS, Google Pixel).
 - **Native Touch Controls:** Tap anywhere on the mobile screen to flap, start the game, or restart on Game Over.
 - **Dynamic Letterboxing & Scaling:** Automatically calculates device aspect ratio to center and scale the game view on any modern mobile resolution (e.g. 19.5:9, 20:9, 16:9) without distortion.
 - **Android System Fonts:** Seamlessly falls back to `/system/fonts/Roboto-Regular.ttf` or `/system/fonts/DroidSans.ttf` on mobile devices.

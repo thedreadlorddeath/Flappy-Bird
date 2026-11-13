@@ -2,6 +2,7 @@
 
 #include <SFML/Graphics.hpp>
 #include <string>
+#include "Cosmetics.hpp"
 
 enum class MedalTier {
     None,
@@ -22,6 +23,19 @@ public:
     void drawHUD(sf::RenderWindow& window, int score);
     void drawPauseOverlay(sf::RenderWindow& window);
     void drawGameOverCard(sf::RenderWindow& window, int score, int bestScore, bool isNewBest);
+
+    // New Screens: Cosmetics Wardrobe and Scoreboard
+    void drawCosmeticsScreen(sf::RenderWindow& window, const CosmeticsManager& cosmetics, int bestScore);
+    void drawScoreboardScreen(sf::RenderWindow& window, const CosmeticsManager& cosmetics, int bestScore);
+
+    // Button Bounding Boxes for Click / Touch
+    sf::FloatRect getWardrobeButtonBounds() const;
+    sf::FloatRect getScoreboardButtonBounds() const;
+    sf::FloatRect getBackButtonBounds() const;
+    sf::FloatRect getHatPrevBounds() const;
+    sf::FloatRect getHatNextBounds() const;
+    sf::FloatRect getOutfitPrevBounds() const;
+    sf::FloatRect getOutfitNextBounds() const;
 
     void reset();
 

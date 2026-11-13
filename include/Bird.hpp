@@ -1,6 +1,7 @@
 #pragma once
 
 #include <SFML/Graphics.hpp>
+#include "Cosmetics.hpp"
 
 class Bird {
 public:
@@ -11,7 +12,7 @@ public:
     void flap();
     void reset();
 
-    void draw(sf::RenderWindow& window);
+    void draw(sf::RenderWindow& window, CosmeticsManager* cosmetics = nullptr, float time = 0.0f);
 
     // Getters
     sf::Vector2f getPosition() const { return m_position; }
