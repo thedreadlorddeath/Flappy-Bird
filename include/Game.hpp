@@ -26,6 +26,7 @@ private:
     void processEvents();
     void update(float dt);
     void render();
+    void updateViewLetterbox(unsigned int width, unsigned int height);
 
     void flapAction();
     void onCollision();

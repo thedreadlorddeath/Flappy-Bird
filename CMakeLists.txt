@@ -27,25 +27,39 @@ FetchContent_MakeAvailable(SFML)
 # Project Source Files
 file(GLOB_RECURSE SOURCES "src/*.cpp")
 
-add_executable(FlappyBird ${SOURCES})
-
-target_include_directories(FlappyBird PRIVATE include)
-
-target_link_libraries(FlappyBird PRIVATE
-    sfml-graphics
-    sfml-audio
-    sfml-window
-    sfml-system
-)
-
-if(WIN32)
-    target_link_libraries(FlappyBird PRIVATE opengl32 winmm gdi32)
-    
-    # Automatically copy openal32.dll next to executable on Windows
-    add_custom_command(TARGET FlappyBird POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "${sfml_SOURCE_DIR}/extlibs/bin/x64/openal32.dll"
-            $<TARGET_FILE_DIR:FlappyBird>
-        COMMENT "Copying openal32.dll to target directory"
+if(ANDROID)
+    # Android uses NativeActivity which loads libFlappyBird.so
+    add_library(FlappyBird SHARED ${SOURCES})
+    target_include_directories(FlappyBird PRIVATE include)
+    target_link_libraries(FlappyBird PRIVATE
+        sfml-activity
+        sfml-graphics
+        sfml-audio
+        sfml-window
+        sfml-system
+        android
+        log
     )
+else()
+    # Desktop Executable (Windows / Linux / macOS)
+    add_executable(FlappyBird ${SOURCES})
+    target_include_directories(FlappyBird PRIVATE include)
+    target_link_libraries(FlappyBird PRIVATE
+        sfml-graphics
+        sfml-audio
+        sfml-window
+        sfml-system
+    )
+
+    if(WIN32)
+        target_link_libraries(FlappyBird PRIVATE opengl32 winmm gdi32)
+        
+        # Automatically copy openal32.dll next to executable on Windows
+        add_custom_command(TARGET FlappyBird POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "${sfml_SOURCE_DIR}/extlibs/bin/x64/openal32.dll"
+                $<TARGET_FILE_DIR:FlappyBird>
+            COMMENT "Copying openal32.dll to target directory"
+        )
+    endif()
 endif()

@@ -9,7 +9,8 @@
 [![C++20](https://img.shields.io/badge/C%2B%2B-20-00599C?style=for-the-badge&logo=c%2B%2B&logoColor=white)](https://en.cppreference.com/w/cpp/20)
 [![SFML](https://img.shields.io/badge/SFML-2.6.2-8CC445?style=for-the-badge&logo=sfml&logoColor=white)](https://www.sfml-dev.org/)
 [![CMake](https://img.shields.io/badge/CMake-3.20+-064F8C?style=for-the-badge&logo=cmake&logoColor=white)](https://cmake.org/)
-[![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20macOS-blueviolet?style=for-the-badge)](https://github.com/thedreadlorddeath/Flappy-Bird)
+[![Android](https://img.shields.io/badge/Android-APK-3DDC84?style=for-the-badge&logo=android&logoColor=white)](https://github.com/thedreadlorddeath/Flappy-Bird/actions)
+[![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Android%20%7C%20Linux-blueviolet?style=for-the-badge)](https://github.com/thedreadlorddeath/Flappy-Bird)
 [![License: MIT](https://img.shields.io/badge/License-MIT-F5A623?style=for-the-badge)](LICENSE)
 
 <p align="center">
@@ -77,6 +78,31 @@ High scores persist across sessions in `highscore.txt`. Survive the pipes to ear
 | **Gold** | `30 – 39` | 🥇 **GOLD** | Gleaming polished gold medallion with amber rim |
 | **Silver** | `20 – 29` | 🥈 **SILVER** | Sleek chrome-silver medallion with dual ribbons |
 | **Bronze** | `10 – 19` | 🥉 **BRONZE** | Warm burnished bronze badge |
+
+---
+
+## 📱 Android APK & Mobile Compatibility
+
+Flappy Bird Sunset Arcade is built with native Android compatibility via SFML's `NativeActivity`:
+
+- **Native Touch Controls:** Tap anywhere on the mobile screen to flap, start the game, or restart on Game Over.
+- **Dynamic Letterboxing & Scaling:** Automatically calculates device aspect ratio to center and scale the game view on any modern mobile resolution (e.g. 19.5:9, 20:9, 16:9) without distortion.
+- **Android System Fonts:** Seamlessly falls back to `/system/fonts/Roboto-Regular.ttf` or `/system/fonts/DroidSans.ttf` on mobile devices.
+- **Automated CI/CD APK Build:** GitHub Actions automatically compiles the native C++ shared library with Android NDK and packages a ready-to-install `FlappyBird-SunsetArcade.apk` on every push!
+
+### 📥 Downloading the APK
+1. Go to the [**Actions Tab**](https://github.com/thedreadlorddeath/Flappy-Bird/actions) on GitHub.
+2. Click on the latest workflow run.
+3. Under **Artifacts**, download `FlappyBird-Android-APK`.
+4. Install `FlappyBird-SunsetArcade.apk` onto your Android phone and play!
+
+### 🛠️ Building the APK Locally
+If you have the Android SDK & NDK installed:
+```bash
+cd android
+./gradlew assembleRelease
+# APK is generated at android/app/build/outputs/apk/release/app-release.apk
+```
 
 ---
 

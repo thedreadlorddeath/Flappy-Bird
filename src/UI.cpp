@@ -23,13 +23,23 @@ UI::UI()
 }
 
 void UI::loadFont() {
-    // Try reliable Windows font paths
+    // Try reliable Android, Windows, and Linux font paths
     const char* fontCandidates[] = {
-        "C:/Windows/Fonts/segoeuib.ttf", // Segoe UI Bold
-        "C:/Windows/Fonts/arialbd.ttf",  // Arial Bold
-        "C:/Windows/Fonts/arial.ttf",    // Arial Regular
-        "C:/Windows/Fonts/tahoma.ttf",   // Tahoma
-        "C:/Windows/Fonts/consola.ttf"   // Consolas
+        // Android system fonts
+        "/system/fonts/Roboto-Regular.ttf",
+        "/system/fonts/Roboto-Bold.ttf",
+        "/system/fonts/DroidSans.ttf",
+        "/system/fonts/DroidSans-Bold.ttf",
+        "/system/fonts/NotoSans-Regular.ttf",
+        // Windows system fonts
+        "C:/Windows/Fonts/segoeuib.ttf",
+        "C:/Windows/Fonts/arialbd.ttf",
+        "C:/Windows/Fonts/arial.ttf",
+        "C:/Windows/Fonts/tahoma.ttf",
+        "C:/Windows/Fonts/consola.ttf",
+        // Linux system fonts
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+        "/usr/share/fonts/TTF/DejaVuSans-Bold.ttf"
     };
 
     for (const char* path : fontCandidates) {

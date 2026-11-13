@@ -80,8 +80,34 @@ void Game::processEvents() {
             if (event.mouseButton.button == sf::Mouse::Left) {
                 flapAction();
             }
+        } else if (event.type == sf::Event::TouchBegan) {
+            // Android mobile touch support
+            flapAction();
+        } else if (event.type == sf::Event::Resized) {
+            updateViewLetterbox(event.size.width, event.size.height);
         }
     }
+}
+
+void Game::updateViewLetterbox(unsigned int width, unsigned int height) {
+    if (width == 0 || height == 0) return;
+
+    float windowRatio = static_cast<float>(width) / static_cast<float>(height);
+    float viewRatio = Config::WINDOW_WIDTH / Config::WINDOW_HEIGHT;
+    float sizeX = 1.0f;
+    float sizeY = 1.0f;
+    float posX = 0.0f;
+    float posY = 0.0f;
+
+    if (windowRatio >= viewRatio) {
+        sizeX = viewRatio / windowRatio;
+        posX = (1.0f - sizeX) * 0.5f;
+    } else {
+        sizeY = windowRatio / viewRatio;
+        posY = (1.0f - sizeY) * 0.5f;
+    }
+
+    m_defaultView.setViewport(sf::FloatRect(posX, posY, sizeX, sizeY));
 }
 
 void Game::flapAction() {
