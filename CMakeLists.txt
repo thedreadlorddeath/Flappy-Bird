@@ -28,18 +28,19 @@ FetchContent_MakeAvailable(SFML)
 file(GLOB_RECURSE SOURCES "src/*.cpp")
 
 if(ANDROID)
-    # Android uses NativeActivity which loads libFlappyBird.so
+    # Android uses NativeActivity which loads libFlappyBird.so directly
     add_library(FlappyBird SHARED ${SOURCES})
     target_include_directories(FlappyBird PRIVATE include)
     target_link_libraries(FlappyBird PRIVATE
         -Wl,--whole-archive sfml-main -Wl,--no-whole-archive
-        sfml-activity
         sfml-graphics
         sfml-audio
         sfml-window
         sfml-system
         android
         log
+        EGL
+        GLESv1_CM
     )
 else()
     # Desktop Executable (Windows / Linux / macOS)
