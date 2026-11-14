@@ -23,8 +23,11 @@ UI::UI()
 }
 
 void UI::loadFont() {
-    // Try reliable Android, Windows, and Linux font paths
+    // Try packaged APK asset font, followed by Android, Windows, and Linux font paths
     const char* fontCandidates[] = {
+        // Bundled assets (SFML on Android reads "font.ttf" relative to APK assets/)
+        "font.ttf",
+        "assets/font.ttf",
         // Android system fonts
         "/system/fonts/Roboto-Regular.ttf",
         "/system/fonts/Roboto-Bold.ttf",
@@ -49,7 +52,7 @@ void UI::loadFont() {
         }
     }
 
-    std::cerr << "Warning: Could not load default Windows font." << std::endl;
+    std::cerr << "Warning: Could not load any font." << std::endl;
 }
 
 void UI::reset() {

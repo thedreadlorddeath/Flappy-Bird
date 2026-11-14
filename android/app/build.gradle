@@ -43,6 +43,10 @@ android {
         }
     }
 
+    androidResources {
+        noCompress 'ttf'
+    }
+
     packaging {
         resources {
             excludes += [

@@ -1,6 +1,10 @@
 #pragma once
 
 #include <SFML/Graphics/Color.hpp>
+#include <string>
+#if defined(__ANDROID__)
+#include <sys/stat.h>
+#endif
 
 namespace Config {
     // Window dimensions
@@ -38,6 +42,24 @@ namespace Config {
     constexpr float PARALLAX_CLOUDS    = 35.0f;
     constexpr float PARALLAX_GROUND    = PIPE_SPEED; // Synchronized with pipes
 
-    // High Score Filename
+    // Save File Path Resolvers
+    inline std::string getSaveFilePath(const std::string& filename) {
+#if defined(__ANDROID__)
+        const char* internalDir = "/data/data/com.thedreadlorddeath.flappybird/files";
+        mkdir(internalDir, 0755);
+        return std::string(internalDir) + "/" + filename;
+#else
+        return filename;
+#endif
+    }
+
+    inline std::string getHighScoreFilePath() {
+        return getSaveFilePath("highscore.txt");
+    }
+
+    inline std::string getCosmeticsFilePath() {
+        return getSaveFilePath("cosmetics.txt");
+    }
+
     inline const char* HIGHSCORE_FILE = "highscore.txt";
 }

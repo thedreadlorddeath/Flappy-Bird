@@ -1,10 +1,10 @@
 #include "Cosmetics.hpp"
+#include "Config.hpp"
 #include <fstream>
 #include <cmath>
 #include <algorithm>
 
 namespace {
-    const char* COSMETICS_FILE = "cosmetics.txt";
     const sf::Color outlineColor(35, 18, 10);
 }
 
@@ -39,23 +39,31 @@ CosmeticsManager::CosmeticsManager()
 }
 
 void CosmeticsManager::load() {
-    std::ifstream file(COSMETICS_FILE);
-    if (file.is_open()) {
-        int hatInt = 0;
-        int outfitInt = 0;
-        if (file >> hatInt >> outfitInt) {
-            if (hatInt >= 0 && hatInt <= 9) m_equippedHat = static_cast<HatId>(hatInt);
-            if (outfitInt >= 0 && outfitInt <= 8) m_equippedOutfit = static_cast<OutfitId>(outfitInt);
+    try {
+        std::ifstream file(Config::getCosmeticsFilePath());
+        if (file.is_open()) {
+            int hatInt = 0;
+            int outfitInt = 0;
+            if (file >> hatInt >> outfitInt) {
+                if (hatInt >= 0 && hatInt <= 9) m_equippedHat = static_cast<HatId>(hatInt);
+                if (outfitInt >= 0 && outfitInt <= 8) m_equippedOutfit = static_cast<OutfitId>(outfitInt);
+            }
+            file.close();
         }
-        file.close();
+    } catch (...) {
+        // Silently ignore load errors
     }
 }
 
 void CosmeticsManager::save() {
-    std::ofstream file(COSMETICS_FILE);
-    if (file.is_open()) {
-        file << static_cast<int>(m_equippedHat) << " " << static_cast<int>(m_equippedOutfit) << std::endl;
-        file.close();
+    try {
+        std::ofstream file(Config::getCosmeticsFilePath());
+        if (file.is_open()) {
+            file << static_cast<int>(m_equippedHat) << " " << static_cast<int>(m_equippedOutfit) << std::endl;
+            file.close();
+        }
+    } catch (...) {
+        // Silently ignore save errors
     }
 }
 

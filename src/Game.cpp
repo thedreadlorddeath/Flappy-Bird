@@ -6,10 +6,16 @@
 #include <cmath>
 
 Game::Game()
+#if defined(__ANDROID__)
+    : m_window(sf::VideoMode::getDesktopMode(),
+               "Flappy Bird - Sunset Arcade",
+               sf::Style::Fullscreen)
+#else
     : m_window(sf::VideoMode(static_cast<unsigned int>(Config::WINDOW_WIDTH),
                              static_cast<unsigned int>(Config::WINDOW_HEIGHT)),
                "Flappy Bird - Sunset Arcade",
                sf::Style::Titlebar | sf::Style::Close)
+#endif
     , m_state(GameState::GetReady)
     , m_previousState(GameState::GetReady)
     , m_score(0)
@@ -17,28 +23,42 @@ Game::Game()
     , m_isNewBest(false)
     , m_globalTime(0.0f) {
     m_window.setFramerateLimit(60);
-    m_defaultView = m_window.getDefaultView();
+
+    m_defaultView.setSize(Config::WINDOW_WIDTH, Config::WINDOW_HEIGHT);
+    m_defaultView.setCenter(Config::WINDOW_WIDTH * 0.5f, Config::WINDOW_HEIGHT * 0.5f);
+
+    sf::Vector2u winSize = m_window.getSize();
+    updateViewLetterbox(winSize.x, winSize.y);
+    m_window.setView(m_defaultView);
 
     loadHighScore();
 }
 
 void Game::loadHighScore() {
     m_bestScore = 0;
-    std::ifstream file(Config::HIGHSCORE_FILE);
-    if (file.is_open()) {
-        file >> m_bestScore;
-        if (file.fail() || m_bestScore < 0) {
-            m_bestScore = 0;
+    try {
+        std::ifstream file(Config::getHighScoreFilePath());
+        if (file.is_open()) {
+            file >> m_bestScore;
+            if (file.fail() || m_bestScore < 0) {
+                m_bestScore = 0;
+            }
+            file.close();
         }
-        file.close();
+    } catch (...) {
+        m_bestScore = 0;
     }
 }
 
 void Game::saveHighScore() {
-    std::ofstream file(Config::HIGHSCORE_FILE);
-    if (file.is_open()) {
-        file << m_bestScore << std::endl;
-        file.close();
+    try {
+        std::ofstream file(Config::getHighScoreFilePath());
+        if (file.is_open()) {
+            file << m_bestScore << std::endl;
+            file.close();
+        }
+    } catch (...) {
+        // Silently ignore save errors
     }
 }
 
@@ -160,11 +180,11 @@ void Game::processEvents() {
             }
         } else if (event.type == sf::Event::MouseButtonPressed) {
             if (event.mouseButton.button == sf::Mouse::Left) {
-                sf::Vector2f clickPos = m_window.mapPixelToCoords(sf::Vector2i(event.mouseButton.x, event.mouseButton.y));
+                sf::Vector2f clickPos = m_window.mapPixelToCoords(sf::Vector2i(event.mouseButton.x, event.mouseButton.y), m_defaultView);
                 handleScreenClicks(clickPos);
             }
         } else if (event.type == sf::Event::TouchBegan) {
-            sf::Vector2f clickPos = m_window.mapPixelToCoords(sf::Vector2i(event.touch.x, event.touch.y));
+            sf::Vector2f clickPos = m_window.mapPixelToCoords(sf::Vector2i(event.touch.x, event.touch.y), m_defaultView);
             handleScreenClicks(clickPos);
         } else if (event.type == sf::Event::Resized) {
             updateViewLetterbox(event.size.width, event.size.height);
