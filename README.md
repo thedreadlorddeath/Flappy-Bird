@@ -123,7 +123,8 @@ Flappy Bird Sunset Arcade is 100% compatible with Android 9 (API 28) through And
 - **Automated CI/CD APK Build:** GitHub Actions automatically compiles the native C++ shared library with Android NDK and packages a ready-to-install `FlappyBird-SunsetArcade.apk` on every push!
 
 ### 📥 Downloading the APK
-- **Direct APK Download:** Download [**apk/FlappyBird-SunsetArcade.apk**](apk/FlappyBird-SunsetArcade.apk) directly from this repository and install it onto your Android device!
+- **Official GitHub Release (Recommended):** [**FlappyBird-SunsetArcade.apk (v1.0.1)**](https://github.com/thedreadlorddeath/Flappy-Bird/releases/download/v1.0.1/FlappyBird-SunsetArcade.apk)
+- **Direct Repository Download:** [**apk/FlappyBird-SunsetArcade.apk**](https://github.com/thedreadlorddeath/Flappy-Bird/raw/main/apk/FlappyBird-SunsetArcade.apk)
 - **Cloud CI Artifacts:** Alternatively, go to the [**Actions Tab**](https://github.com/thedreadlorddeath/Flappy-Bird/actions), select the latest build, and download `FlappyBird-Android-APK`.
 
 ### 🛠️ Building the APK Locally

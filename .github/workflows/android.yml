@@ -8,6 +8,9 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build-apk:
     name: Build Android APK
@@ -16,6 +19,8 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -45,15 +50,12 @@ jobs:
         working-directory: android
         run: |
           chmod +x gradlew || true
-          gradle assembleRelease --no-daemon || ./gradlew assembleRelease --no-daemon || true
+          gradle assembleRelease --no-daemon
 
       - name: Stage APK Output
         run: |
           mkdir -p output
-          find android/app/build/outputs/apk/ -name "*.apk" -exec cp {} output/FlappyBird-SunsetArcade.apk \; || true
-          if [ ! -f "output/FlappyBird-SunsetArcade.apk" ]; then
-            cp apk/FlappyBird-SunsetArcade.apk output/
-          fi
+          find android/app/build/outputs/apk/ -name "*.apk" -exec cp {} output/FlappyBird-SunsetArcade.apk \;
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
@@ -62,10 +64,21 @@ jobs:
           path: output/FlappyBird-SunsetArcade.apk
           retention-days: 30
 
-      - name: Create Release and Upload APK
-        if: startsWith(github.ref, 'refs/tags/v')
+      - name: Commit and Push Built APK to Repository
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          cp output/FlappyBird-SunsetArcade.apk apk/FlappyBird-SunsetArcade.apk
+          git add apk/FlappyBird-SunsetArcade.apk
+          git diff --quiet && git diff --staged --quiet || (git commit -m "chore(apk): update FlappyBird-SunsetArcade.apk with compiled native binaries [skip ci]" && git push origin main)
+
+      - name: Create or Update GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: v1.0.1
+          name: "Flappy Bird Sunset Arcade v1.0.1"
+          draft: false
+          prerelease: false
           files: output/FlappyBird-SunsetArcade.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
