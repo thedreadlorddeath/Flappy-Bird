@@ -9,7 +9,7 @@ Game::Game()
 #if defined(__ANDROID__)
     : m_window(sf::VideoMode::getDesktopMode(),
                "Flappy Bird - Sunset Arcade",
-               sf::Style::Fullscreen)
+               sf::Style::Default)
 #else
     : m_window(sf::VideoMode(static_cast<unsigned int>(Config::WINDOW_WIDTH),
                              static_cast<unsigned int>(Config::WINDOW_HEIGHT)),

@@ -15,22 +15,26 @@ namespace {
 }
 
 SoundGenerator::SoundGenerator() {
-    generateFlapSound();
-    generateScoreSound();
-    generateHitSound();
-    generateMedalSound();
+    try {
+        generateFlapSound();
+        generateScoreSound();
+        generateHitSound();
+        generateMedalSound();
 
-    m_flapSound.setBuffer(m_flapBuffer);
-    m_flapSound.setVolume(75.0f);
+        m_flapSound.setBuffer(m_flapBuffer);
+        m_flapSound.setVolume(75.0f);
 
-    m_scoreSound.setBuffer(m_scoreBuffer);
-    m_scoreSound.setVolume(85.0f);
+        m_scoreSound.setBuffer(m_scoreBuffer);
+        m_scoreSound.setVolume(85.0f);
 
-    m_hitSound.setBuffer(m_hitBuffer);
-    m_hitSound.setVolume(90.0f);
+        m_hitSound.setBuffer(m_hitBuffer);
+        m_hitSound.setVolume(90.0f);
 
-    m_medalSound.setBuffer(m_medalBuffer);
-    m_medalSound.setVolume(80.0f);
+        m_medalSound.setBuffer(m_medalBuffer);
+        m_medalSound.setVolume(80.0f);
+    } catch (...) {
+        // Safe fallback if OpenAL device fails to initialize on mobile
+    }
 }
 
 void SoundGenerator::generateFlapSound() {
@@ -163,21 +167,29 @@ void SoundGenerator::generateMedalSound() {
 }
 
 void SoundGenerator::playFlap() {
-    m_flapSound.stop();
-    m_flapSound.play();
+    try {
+        m_flapSound.stop();
+        m_flapSound.play();
+    } catch (...) {}
 }
 
 void SoundGenerator::playScore() {
-    m_scoreSound.stop();
-    m_scoreSound.play();
+    try {
+        m_scoreSound.stop();
+        m_scoreSound.play();
+    } catch (...) {}
 }
 
 void SoundGenerator::playHit() {
-    m_hitSound.stop();
-    m_hitSound.play();
+    try {
+        m_hitSound.stop();
+        m_hitSound.play();
+    } catch (...) {}
 }
 
 void SoundGenerator::playMedal() {
-    m_medalSound.stop();
-    m_medalSound.play();
+    try {
+        m_medalSound.stop();
+        m_medalSound.play();
+    } catch (...) {}
 }
