@@ -32,7 +32,7 @@ if(ANDROID)
     add_library(FlappyBird SHARED ${SOURCES})
     target_include_directories(FlappyBird PRIVATE include)
     target_link_libraries(FlappyBird PRIVATE
-        sfml-main
+        -Wl,--whole-archive sfml-main -Wl,--no-whole-archive
         sfml-activity
         sfml-graphics
         sfml-audio
