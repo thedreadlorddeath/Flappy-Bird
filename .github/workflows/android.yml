@@ -49,8 +49,7 @@ jobs:
       - name: Build APK with Gradle
         working-directory: android
         run: |
-          chmod +x gradlew || true
-          if ! ./gradlew assembleRelease --no-daemon --stacktrace > ../gradle_build.log 2>&1; then
+          if ! gradle assembleRelease --no-daemon --stacktrace > ../gradle_build.log 2>&1; then
             echo "::error::=== LAST 30 LINES ==="
             tail -n 30 ../gradle_build.log | while IFS= read -r line; do
               echo "::error::$line"
