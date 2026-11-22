@@ -133,6 +133,7 @@ void UI::drawTextShadowed(sf::RenderWindow& window, const std::string& str,
 }
 
 void UI::drawHUD(sf::RenderWindow& window, int score, int bestScore) {
+    (void)bestScore;
     if (!m_fontLoaded) return;
 
     int stage = Config::getStageIndex(score);
@@ -697,6 +698,7 @@ void UI::drawCosmeticsScreen(sf::RenderWindow& window, const CosmeticsManager& c
 }
 
 void UI::drawScoreboardScreen(sf::RenderWindow& window, const CosmeticsManager& cosmetics, int bestScore) {
+    (void)cosmetics;
     float screenH = window.getView().getSize().y;
 
     sf::RectangleShape veil(sf::Vector2f(Config::WINDOW_WIDTH, screenH));

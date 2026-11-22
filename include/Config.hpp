@@ -40,7 +40,7 @@ namespace Config {
         return std::clamp(score / 100, 0, 9);
     }
 
-    inline const char* getStageName(int stage) {
+    inline std::string getStageName(int stage) {
         switch (stage) {
             case 0: return "CLASSIC SUNSET";
             case 1: return "EMERALD FOREST";
