@@ -50,7 +50,7 @@ jobs:
         working-directory: android
         run: |
           chmod +x gradlew || true
-          gradle assembleRelease --no-daemon
+          ./gradlew assembleRelease --no-daemon --stacktrace || gradle assembleRelease --no-daemon
 
       - name: Stage APK Output
         run: |

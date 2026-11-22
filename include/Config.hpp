@@ -11,12 +11,14 @@
 namespace Config {
     // Window dimensions
     constexpr float WINDOW_WIDTH         = 480.0f;
+    constexpr float WINDOW_HEIGHT        = 800.0f;
     constexpr float DEFAULT_PLAY_HEIGHT  = 610.0f;
     constexpr float GROUND_HEIGHT        = 110.0f;
     constexpr int   MAX_SCORE            = 999;
 
     // Bird Physics
     constexpr float BIRD_START_X     = 130.0f;
+    constexpr float BIRD_START_Y     = 350.0f;
     constexpr float BIRD_RADIUS      = 17.0f;  // Visual radius
     constexpr float BIRD_HIT_RADIUS  = 13.5f;  // Fair collision hitbox (~80%)
     constexpr float GRAVITY          = 1050.0f; // px/s^2
