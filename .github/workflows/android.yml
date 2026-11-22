@@ -50,16 +50,9 @@ jobs:
         working-directory: android
         run: |
           if ! gradle assembleRelease --no-daemon --stacktrace > ../gradle_build.log 2>&1; then
-            echo "::error::=== TASK FAILURE DETAILS ==="
-            grep -B 2 -A 35 "Execution failed for task" ../gradle_build.log | while IFS= read -r line; do
+            echo "::error::=== NINJA FAILURE ==="
+            grep -A 50 "FAILED:" ../gradle_build.log | while IFS= read -r line; do
               echo "::error::$line"
-            done
-            echo "::error::=== CXX BUILD LOGS ==="
-            find . -type f \( -name "build_output.txt" -o -name "ninja_log" -o -name "*.log" \) 2>/dev/null | while IFS= read -r f; do
-              echo "::error::FILE: $f"
-              tail -n 25 "$f" | while IFS= read -r l; do
-                echo "::error::$l"
-              done
             done
             exit 1
           fi
