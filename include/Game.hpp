@@ -48,6 +48,9 @@ private:
     int m_bestScore;
     bool m_isNewBest;
     float m_globalTime;
+    float m_logicalHeight;
+    int m_currentStage;
+    bool m_hasReached999;
 
     // Core Game Systems
     Bird m_bird;

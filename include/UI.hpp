@@ -9,7 +9,9 @@ enum class MedalTier {
     Bronze,
     Silver,
     Gold,
-    Platinum
+    Platinum,
+    Cosmic,
+    Omnipotent
 };
 
 class UI {
@@ -18,24 +20,27 @@ public:
 
     void update(float dt);
     void triggerScorePop();
+    void triggerStageBanner(int stage);
+    void triggerApotheosisBanner();
 
     void drawGetReady(sf::RenderWindow& window);
-    void drawHUD(sf::RenderWindow& window, int score);
+    void drawHUD(sf::RenderWindow& window, int score, int bestScore);
     void drawPauseOverlay(sf::RenderWindow& window);
     void drawGameOverCard(sf::RenderWindow& window, int score, int bestScore, bool isNewBest);
 
-    // New Screens: Cosmetics Wardrobe and Scoreboard
+    // Screens: Cosmetics Wardrobe and Scoreboard
     void drawCosmeticsScreen(sf::RenderWindow& window, const CosmeticsManager& cosmetics, int bestScore);
     void drawScoreboardScreen(sf::RenderWindow& window, const CosmeticsManager& cosmetics, int bestScore);
 
     // Button Bounding Boxes for Click / Touch
-    sf::FloatRect getWardrobeButtonBounds() const;
-    sf::FloatRect getScoreboardButtonBounds() const;
-    sf::FloatRect getBackButtonBounds() const;
+    sf::FloatRect getWardrobeButtonBounds(float screenH = 800.0f) const;
+    sf::FloatRect getScoreboardButtonBounds(float screenH = 800.0f) const;
+    sf::FloatRect getBackButtonBounds(float screenH = 800.0f) const;
     sf::FloatRect getHatPrevBounds() const;
     sf::FloatRect getHatNextBounds() const;
     sf::FloatRect getOutfitPrevBounds() const;
     sf::FloatRect getOutfitNextBounds() const;
+    sf::FloatRect getApotheosisToggleBounds() const;
 
     void reset();
 
@@ -53,9 +58,16 @@ private:
     // Juice: Score Pop Animation
     float m_scoreScale;
 
-    // Get Ready pulse timer
+    // Pulse timer for UI animations
     float m_pulseTimer;
 
     // Game Over Card slide-in animation
     float m_cardProgress;
+
+    // Stage Announcement Banner
+    int m_announcedStage;
+    float m_stageBannerTimer;
+    std::string m_stageBannerTitle;
+    std::string m_stageBannerSubtitle;
+    bool m_apotheosisBanner;
 };

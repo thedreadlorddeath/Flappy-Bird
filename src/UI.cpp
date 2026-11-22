@@ -3,13 +3,17 @@
 #include <cmath>
 #include <algorithm>
 #include <iostream>
+#include <iomanip>
+#include <sstream>
 
 namespace {
     MedalTier getTier(int score) {
-        if (score >= 40) return MedalTier::Platinum;
-        if (score >= 30) return MedalTier::Gold;
-        if (score >= 20) return MedalTier::Silver;
-        if (score >= 10) return MedalTier::Bronze;
+        if (score >= 999) return MedalTier::Omnipotent;
+        if (score >= 600) return MedalTier::Cosmic;
+        if (score >= 300) return MedalTier::Platinum;
+        if (score >= 100) return MedalTier::Gold;
+        if (score >= 35)  return MedalTier::Silver;
+        if (score >= 10)  return MedalTier::Bronze;
         return MedalTier::None;
     }
 }
@@ -18,14 +22,18 @@ UI::UI()
     : m_fontLoaded(false)
     , m_scoreScale(1.0f)
     , m_pulseTimer(0.0f)
-    , m_cardProgress(0.0f) {
+    , m_cardProgress(0.0f)
+    , m_announcedStage(-1)
+    , m_stageBannerTimer(0.0f)
+    , m_stageBannerTitle("")
+    , m_stageBannerSubtitle("")
+    , m_apotheosisBanner(false) {
     loadFont();
 }
 
 void UI::loadFont() {
-    // Try packaged APK asset font, followed by Android, Windows, and Linux font paths
     const char* fontCandidates[] = {
-        // Bundled assets (SFML on Android reads "font.ttf" relative to APK assets/)
+        // Bundled assets
         "font.ttf",
         "assets/font.ttf",
         // Android system fonts
@@ -59,22 +67,41 @@ void UI::reset() {
     m_scoreScale = 1.0f;
     m_pulseTimer = 0.0f;
     m_cardProgress = 0.0f;
-}
-
-void UI::update(float dt) {
-    m_pulseTimer += dt;
-
-    // Smoothly ease score scale back to 1.0f
-    m_scoreScale += (1.0f - m_scoreScale) * 11.0f * dt;
-
-    // Card entry animation (ease out cubic)
-    if (m_cardProgress < 1.0f) {
-        m_cardProgress = std::min(1.0f, m_cardProgress + dt * 2.8f);
-    }
+    m_announcedStage = -1;
+    m_stageBannerTimer = 0.0f;
+    m_apotheosisBanner = false;
 }
 
 void UI::triggerScorePop() {
     m_scoreScale = 1.45f;
+}
+
+void UI::triggerStageBanner(int stage) {
+    m_announcedStage = stage;
+    m_stageBannerTimer = 2.8f;
+    m_apotheosisBanner = (stage >= 9);
+    m_stageBannerTitle = "STAGE " + std::to_string(stage + 1) + ": " + Config::getStageName(stage);
+    m_stageBannerSubtitle = (stage >= 9) ? "THE FINAL APOTHEOSIS! MAXIMUM SPEED!" : "DIFFICULTY & SPEED ELEVATED!";
+}
+
+void UI::triggerApotheosisBanner() {
+    m_stageBannerTimer = 4.0f;
+    m_apotheosisBanner = true;
+    m_stageBannerTitle = "SCORE 999: OMNIPOTENT FOOL!";
+    m_stageBannerSubtitle = "DIVINE ASCENSION COMPLETE! SUPERNOVA UNLOCKED!";
+}
+
+void UI::update(float dt) {
+    m_pulseTimer += dt;
+    m_scoreScale += (1.0f - m_scoreScale) * 11.0f * dt;
+
+    if (m_cardProgress < 1.0f) {
+        m_cardProgress = std::min(1.0f, m_cardProgress + dt * 2.8f);
+    }
+
+    if (m_stageBannerTimer > 0.0f) {
+        m_stageBannerTimer -= dt;
+    }
 }
 
 void UI::drawTextShadowed(sf::RenderWindow& window, const std::string& str,
@@ -94,8 +121,8 @@ void UI::drawTextShadowed(sf::RenderWindow& window, const std::string& str,
         text.setOrigin(bounds.left + bounds.width * 0.5f, bounds.top + bounds.height * 0.5f);
     }
 
-    // Shadow
-    text.setPosition(position + sf::Vector2f(2.5f, 3.0f));
+    // Drop shadow
+    text.setPosition(position + sf::Vector2f(2.5f, 2.8f));
     text.setFillColor(shadow);
     window.draw(text);
 
@@ -105,111 +132,175 @@ void UI::drawTextShadowed(sf::RenderWindow& window, const std::string& str,
     window.draw(text);
 }
 
-void UI::drawHUD(sf::RenderWindow& window, int score) {
+void UI::drawHUD(sf::RenderWindow& window, int score, int bestScore) {
     if (!m_fontLoaded) return;
 
+    int stage = Config::getStageIndex(score);
+    float speedMult = Config::getSpeedMultiplier(score);
+
+    // 1. Top Bar: Stage & Speed Badges
+    // Stage Badge (Top Left)
+    sf::RectangleShape stagePill(sf::Vector2f(136.0f, 32.0f));
+    stagePill.setPosition(16.0f, 18.0f);
+    stagePill.setFillColor(sf::Color(20, 16, 36, 210));
+    stagePill.setOutlineColor(sf::Color(255, 195, 60, 220));
+    stagePill.setOutlineThickness(1.8f);
+    window.draw(stagePill);
+
+    std::string stageStr = "STG " + std::to_string(stage + 1) + "/10";
+    drawTextShadowed(window, stageStr, sf::Vector2f(84.0f, 33.0f), 14,
+                     sf::Color(255, 235, 120), sf::Color(10, 8, 20));
+
+    // Speed Multiplier Badge (Top Right)
+    sf::RectangleShape speedPill(sf::Vector2f(110.0f, 32.0f));
+    speedPill.setPosition(Config::WINDOW_WIDTH - 126.0f, 18.0f);
+    speedPill.setFillColor(sf::Color(20, 16, 36, 210));
+    speedPill.setOutlineColor(sf::Color(0, 235, 255, 220));
+    speedPill.setOutlineThickness(1.8f);
+    window.draw(speedPill);
+
+    std::stringstream speedSs;
+    speedSs << std::fixed << std::setprecision(2) << speedMult << "x";
+    drawTextShadowed(window, speedSs.str(), sf::Vector2f(Config::WINDOW_WIDTH - 71.0f, 33.0f), 14,
+                     sf::Color(180, 245, 255), sf::Color(10, 8, 20));
+
+    // 2. Large Central Score
     std::string scoreStr = std::to_string(score);
     sf::Text text;
     text.setFont(m_font);
     text.setString(scoreStr);
-    text.setCharacterSize(48);
+    text.setCharacterSize(52);
     text.setStyle(sf::Text::Bold);
 
     sf::FloatRect bounds = text.getLocalBounds();
     text.setOrigin(bounds.left + bounds.width * 0.5f, bounds.top + bounds.height * 0.5f);
     text.setScale(m_scoreScale, m_scoreScale);
 
-    sf::Vector2f centerPos(Config::WINDOW_WIDTH * 0.5f, 65.0f);
+    sf::Vector2f centerPos(Config::WINDOW_WIDTH * 0.5f, 68.0f);
 
-    // Deep drop shadow
-    text.setPosition(centerPos + sf::Vector2f(3.0f, 3.5f));
-    text.setFillColor(sf::Color(15, 10, 30, 200));
+    // Deep shadow
+    text.setPosition(centerPos + sf::Vector2f(3.5f, 4.0f));
+    text.setFillColor(sf::Color(15, 10, 30, 220));
     window.draw(text);
 
-    // Crisp white text with golden rim
+    // Gold/White Core
     text.setPosition(centerPos);
-    text.setFillColor(sf::Color(255, 255, 255));
-    text.setOutlineColor(sf::Color(25, 20, 35));
-    text.setOutlineThickness(3.5f);
+    if (score >= 999) {
+        text.setFillColor(sf::Color(255, 220, 100));
+        text.setOutlineColor(sf::Color(255, 60, 150));
+    } else {
+        text.setFillColor(sf::Color(255, 255, 255));
+        text.setOutlineColor(sf::Color(25, 20, 40));
+    }
+    text.setOutlineThickness(4.0f);
     window.draw(text);
+
+    // 3. Stage Transition Announcement Banner
+    if (m_stageBannerTimer > 0.0f) {
+        float alphaT = std::min(1.0f, m_stageBannerTimer * 1.5f);
+        sf::Uint8 alpha = static_cast<sf::Uint8>(std::clamp(alphaT * 240.0f, 0.0f, 255.0f));
+
+        sf::RectangleShape banner(sf::Vector2f(440.0f, 74.0f));
+        banner.setOrigin(220.0f, 37.0f);
+        banner.setPosition(Config::WINDOW_WIDTH * 0.5f, 155.0f);
+        banner.setFillColor(sf::Color(18, 12, 34, alpha));
+        banner.setOutlineColor(m_apotheosisBanner ? sf::Color(255, 215, 45, alpha) : sf::Color(0, 235, 255, alpha));
+        banner.setOutlineThickness(2.8f);
+        window.draw(banner);
+
+        drawTextShadowed(window, m_stageBannerTitle, sf::Vector2f(Config::WINDOW_WIDTH * 0.5f, 142.0f),
+                         19, m_apotheosisBanner ? sf::Color(255, 225, 80, alpha) : sf::Color(255, 255, 255, alpha),
+                         sf::Color(10, 8, 20, alpha));
+
+        drawTextShadowed(window, m_stageBannerSubtitle, sf::Vector2f(Config::WINDOW_WIDTH * 0.5f, 168.0f),
+                         13, m_apotheosisBanner ? sf::Color(255, 160, 220, alpha) : sf::Color(255, 195, 60, alpha),
+                         sf::Color(10, 8, 20, alpha));
+    }
 }
 
 void UI::drawGetReady(sf::RenderWindow& window) {
-    // 1. Arcade Title: FLAPPY BIRD
-    float titleY = 145.0f;
+    float screenH = window.getView().getSize().y;
+
+    // 1. Arcade Title: FLAPPY BIRD - SUNSET ARCADE
+    float titleY = screenH * 0.16f;
     drawTextShadowed(window, "FLAPPY BIRD", sf::Vector2f(Config::WINDOW_WIDTH * 0.5f, titleY),
-                     42, sf::Color(255, 215, 45), sf::Color(25, 15, 35, 220));
+                     44, sf::Color(255, 215, 45), sf::Color(25, 15, 35, 240));
+
+    drawTextShadowed(window, "SUNSET ARCADE  -  10 REALMS", sf::Vector2f(Config::WINDOW_WIDTH * 0.5f, titleY + 38.0f),
+                     15, sf::Color(255, 145, 65), sf::Color(20, 10, 30, 220));
 
     // 2. Subtitle: GET READY! with gentle floating
-    float getReadyY = 215.0f + std::sin(m_pulseTimer * 4.0f) * 4.0f;
+    float getReadyY = screenH * 0.28f + std::sin(m_pulseTimer * 4.0f) * 4.0f;
     drawTextShadowed(window, "GET READY!", sf::Vector2f(Config::WINDOW_WIDTH * 0.5f, getReadyY),
-                     30, sf::Color(255, 125, 50), sf::Color(30, 15, 40, 220));
+                     30, sf::Color(255, 110, 50), sf::Color(30, 15, 40, 220));
 
-    // 3. Instructions Prompt box with pulsing opacity
-    float alpha = 180.0f + std::sin(m_pulseTimer * 5.0f) * 65.0f;
-    sf::Uint8 promptAlpha = static_cast<sf::Uint8>(std::clamp(alpha, 0.0f, 255.0f));
+    // 3. Instructions Prompt box with pulsing outline
+    float promptAlpha = 180.0f + std::sin(m_pulseTimer * 5.0f) * 65.0f;
+    sf::Uint8 a = static_cast<sf::Uint8>(std::clamp(promptAlpha, 0.0f, 255.0f));
 
-    sf::RectangleShape promptCard(sf::Vector2f(320.0f, 65.0f));
-    promptCard.setOrigin(160.0f, 32.5f);
-    promptCard.setPosition(Config::WINDOW_WIDTH * 0.5f, 480.0f);
-    promptCard.setFillColor(sf::Color(20, 15, 35, 190));
-    promptCard.setOutlineColor(sf::Color(255, 190, 60, promptAlpha));
-    promptCard.setOutlineThickness(2.0f);
+    float promptY = screenH * 0.60f;
+    sf::RectangleShape promptCard(sf::Vector2f(340.0f, 68.0f));
+    promptCard.setOrigin(170.0f, 34.0f);
+    promptCard.setPosition(Config::WINDOW_WIDTH * 0.5f, promptY);
+    promptCard.setFillColor(sf::Color(20, 15, 36, 210));
+    promptCard.setOutlineColor(sf::Color(255, 195, 60, a));
+    promptCard.setOutlineThickness(2.2f);
     window.draw(promptCard);
 
-    drawTextShadowed(window, "PRESS SPACE OR CLICK", sf::Vector2f(Config::WINDOW_WIDTH * 0.5f, 468.0f),
-                     18, sf::Color(255, 255, 240, promptAlpha), sf::Color(10, 10, 20, 220));
+    drawTextShadowed(window, "TAP SCREEN OR PRESS SPACE", sf::Vector2f(Config::WINDOW_WIDTH * 0.5f, promptY - 12.0f),
+                     17, sf::Color(255, 255, 245, a), sf::Color(10, 10, 20, 220));
 
-    drawTextShadowed(window, "TO FLAP", sf::Vector2f(Config::WINDOW_WIDTH * 0.5f, 492.0f),
-                     16, sf::Color(255, 210, 80, promptAlpha), sf::Color(10, 10, 20, 220));
+    drawTextShadowed(window, "TO FLAP & ASCEND", sf::Vector2f(Config::WINDOW_WIDTH * 0.5f, promptY + 14.0f),
+                     15, sf::Color(255, 210, 80, a), sf::Color(10, 10, 20, 220));
 
     // 4. Navigation Buttons: [C] WARDROBE  |  [S] SCORES
-    sf::FloatRect wardBounds = getWardrobeButtonBounds();
+    sf::FloatRect wardBounds = getWardrobeButtonBounds(screenH);
     sf::RectangleShape wardBtn(sf::Vector2f(wardBounds.width, wardBounds.height));
     wardBtn.setPosition(wardBounds.left, wardBounds.top);
-    wardBtn.setFillColor(sf::Color(35, 25, 55, 220));
+    wardBtn.setFillColor(sf::Color(36, 26, 58, 230));
     wardBtn.setOutlineColor(sf::Color(255, 185, 45));
-    wardBtn.setOutlineThickness(2.0f);
+    wardBtn.setOutlineThickness(2.2f);
     window.draw(wardBtn);
-    drawTextShadowed(window, "[C] WARDROBE", sf::Vector2f(wardBounds.left + wardBounds.width * 0.5f, wardBounds.top + wardBounds.height * 0.5f),
-                     13, sf::Color(255, 225, 80), sf::Color(10, 10, 20));
+    drawTextShadowed(window, "[C] WARDROBE",
+                     sf::Vector2f(wardBounds.left + wardBounds.width * 0.5f, wardBounds.top + wardBounds.height * 0.5f),
+                     15, sf::Color(255, 225, 80), sf::Color(10, 10, 20));
 
-    sf::FloatRect scoreBounds = getScoreboardButtonBounds();
+    sf::FloatRect scoreBounds = getScoreboardButtonBounds(screenH);
     sf::RectangleShape scoreBtn(sf::Vector2f(scoreBounds.width, scoreBounds.height));
     scoreBtn.setPosition(scoreBounds.left, scoreBounds.top);
-    scoreBtn.setFillColor(sf::Color(35, 25, 55, 220));
+    scoreBtn.setFillColor(sf::Color(36, 26, 58, 230));
     scoreBtn.setOutlineColor(sf::Color(0, 235, 255));
-    scoreBtn.setOutlineThickness(2.0f);
+    scoreBtn.setOutlineThickness(2.2f);
     window.draw(scoreBtn);
-    drawTextShadowed(window, "[S] SCORES", sf::Vector2f(scoreBounds.left + scoreBounds.width * 0.5f, scoreBounds.top + scoreBounds.height * 0.5f),
-                     13, sf::Color(180, 245, 255), sf::Color(10, 10, 20));
+    drawTextShadowed(window, "[S] SCORES",
+                     sf::Vector2f(scoreBounds.left + scoreBounds.width * 0.5f, scoreBounds.top + scoreBounds.height * 0.5f),
+                     15, sf::Color(180, 245, 255), sf::Color(10, 10, 20));
 }
 
 void UI::drawPauseOverlay(sf::RenderWindow& window) {
-    // Semi-transparent backdrop
-    sf::RectangleShape veil(sf::Vector2f(Config::WINDOW_WIDTH, Config::WINDOW_HEIGHT));
-    veil.setFillColor(sf::Color(14, 10, 28, 175));
+    float screenH = window.getView().getSize().y;
+
+    sf::RectangleShape veil(sf::Vector2f(Config::WINDOW_WIDTH, screenH));
+    veil.setFillColor(sf::Color(14, 10, 28, 185));
     window.draw(veil);
 
-    // Pause Dialog Box
-    sf::RectangleShape box(sf::Vector2f(280.0f, 160.0f));
-    box.setOrigin(140.0f, 80.0f);
-    box.setPosition(Config::WINDOW_WIDTH * 0.5f, Config::WINDOW_HEIGHT * 0.42f);
-    box.setFillColor(sf::Color(24, 18, 42, 240));
+    sf::RectangleShape box(sf::Vector2f(300.0f, 170.0f));
+    box.setOrigin(150.0f, 85.0f);
+    box.setPosition(Config::WINDOW_WIDTH * 0.5f, screenH * 0.42f);
+    box.setFillColor(sf::Color(24, 18, 44, 245));
     box.setOutlineColor(sf::Color(255, 195, 60));
     box.setOutlineThickness(3.0f);
     window.draw(box);
 
-    drawTextShadowed(window, "PAUSED", sf::Vector2f(Config::WINDOW_WIDTH * 0.5f, Config::WINDOW_HEIGHT * 0.38f),
+    drawTextShadowed(window, "PAUSED", sf::Vector2f(Config::WINDOW_WIDTH * 0.5f, screenH * 0.38f),
                      34, sf::Color(255, 225, 80), sf::Color(15, 10, 25));
 
-    drawTextShadowed(window, "PRESS [P] TO RESUME", sf::Vector2f(Config::WINDOW_WIDTH * 0.5f, Config::WINDOW_HEIGHT * 0.46f),
+    drawTextShadowed(window, "PRESS [P] TO RESUME", sf::Vector2f(Config::WINDOW_WIDTH * 0.5f, screenH * 0.46f),
                      17, sf::Color(240, 245, 255), sf::Color(15, 10, 25));
 }
 
 void UI::drawMedal(sf::RenderWindow& window, sf::Vector2f center, MedalTier tier) {
     if (tier == MedalTier::None) {
-        // Empty medal slot
         sf::CircleShape emptySlot(24.0f);
         emptySlot.setOrigin(24.0f, 24.0f);
         emptySlot.setPosition(center);
@@ -256,17 +347,29 @@ void UI::drawMedal(sf::RenderWindow& window, sf::Vector2f center, MedalTier tier
         highlightColor = sf::Color(255, 255, 255);
         starColor = sf::Color(255, 255, 255);
         break;
+    case MedalTier::Cosmic:
+        baseColor = sf::Color(165, 80, 255);
+        rimColor = sf::Color(90, 30, 180);
+        highlightColor = sf::Color(230, 190, 255);
+        starColor = sf::Color(0, 245, 255);
+        break;
+    case MedalTier::Omnipotent:
+        baseColor = sf::Color(255, 225, 80);
+        rimColor = sf::Color(255, 70, 160);
+        highlightColor = sf::Color(255, 255, 255);
+        starColor = sf::Color(255, 255, 255);
+        break;
     default:
         break;
     }
 
-    // Outer ribbon hanging
+    // Outer ribbon
     sf::ConvexShape ribbonL;
     ribbonL.setPointCount(3);
     ribbonL.setPoint(0, sf::Vector2f(center.x - 14.0f, center.y + 10.0f));
     ribbonL.setPoint(1, sf::Vector2f(center.x - 22.0f, center.y + 36.0f));
     ribbonL.setPoint(2, sf::Vector2f(center.x - 8.0f, center.y + 26.0f));
-    ribbonL.setFillColor(sf::Color(220, 45, 45));
+    ribbonL.setFillColor((tier >= MedalTier::Cosmic) ? sf::Color(140, 40, 220) : sf::Color(220, 45, 45));
     window.draw(ribbonL);
 
     sf::ConvexShape ribbonR;
@@ -274,7 +377,7 @@ void UI::drawMedal(sf::RenderWindow& window, sf::Vector2f center, MedalTier tier
     ribbonR.setPoint(0, sf::Vector2f(center.x + 14.0f, center.y + 10.0f));
     ribbonR.setPoint(1, sf::Vector2f(center.x + 22.0f, center.y + 36.0f));
     ribbonR.setPoint(2, sf::Vector2f(center.x + 8.0f, center.y + 26.0f));
-    ribbonR.setFillColor(sf::Color(200, 35, 35));
+    ribbonR.setFillColor((tier >= MedalTier::Cosmic) ? sf::Color(100, 20, 180) : sf::Color(200, 35, 35));
     window.draw(ribbonR);
 
     // Medal Outer Rim
@@ -291,7 +394,7 @@ void UI::drawMedal(sf::RenderWindow& window, sf::Vector2f center, MedalTier tier
     medalBody.setFillColor(baseColor);
     window.draw(medalBody);
 
-    // Specular Highlight Arc
+    // Sheen
     sf::CircleShape sheen(16.0f);
     sheen.setScale(1.0f, 0.45f);
     sheen.setOrigin(16.0f, 16.0f);
@@ -315,70 +418,95 @@ void UI::drawMedal(sf::RenderWindow& window, sf::Vector2f center, MedalTier tier
 }
 
 void UI::drawGameOverCard(sf::RenderWindow& window, int score, int bestScore, bool isNewBest) {
-    // Smooth entry animation: slide up from below
-    float t = m_cardProgress;
-    float ease = 1.0f - std::pow(1.0f - t, 3.0f); // Ease out cubic
+    float screenH = window.getView().getSize().y;
 
-    float targetY = Config::WINDOW_HEIGHT * 0.40f;
-    float startY = Config::WINDOW_HEIGHT + 200.0f;
+    float t = m_cardProgress;
+    float ease = 1.0f - std::pow(1.0f - t, 3.0f);
+
+    float targetY = screenH * 0.40f;
+    float startY = screenH + 200.0f;
     float currentY = startY + (targetY - startY) * ease;
 
     // "GAME OVER" header
-    drawTextShadowed(window, "GAME OVER", sf::Vector2f(Config::WINDOW_WIDTH * 0.5f, currentY - 110.0f),
-                     38, sf::Color(255, 80, 70), sf::Color(20, 10, 25));
+    drawTextShadowed(window, "GAME OVER", sf::Vector2f(Config::WINDOW_WIDTH * 0.5f, currentY - 120.0f),
+                     40, sf::Color(255, 80, 70), sf::Color(20, 10, 25));
 
     // Card Panel
-    const float cardW = 340.0f;
-    const float cardH = 175.0f;
+    const float cardW = 380.0f;
+    const float cardH = 195.0f;
     sf::RectangleShape card(sf::Vector2f(cardW, cardH));
     card.setOrigin(cardW * 0.5f, cardH * 0.5f);
     card.setPosition(Config::WINDOW_WIDTH * 0.5f, currentY);
-    card.setFillColor(sf::Color(24, 18, 40, 245));
-    card.setOutlineColor(sf::Color(245, 185, 45)); // Glossy golden arcade trim
+    card.setFillColor(sf::Color(24, 18, 42, 245));
+    card.setOutlineColor(sf::Color(245, 185, 45));
     card.setOutlineThickness(3.5f);
     window.draw(card);
 
-    // Inner card divider
+    // Inner divider
     sf::RectangleShape divider(sf::Vector2f(2.0f, cardH - 30.0f));
     divider.setOrigin(1.0f, (cardH - 30.0f) * 0.5f);
-    divider.setPosition(Config::WINDOW_WIDTH * 0.5f - 30.0f, currentY);
+    divider.setPosition(Config::WINDOW_WIDTH * 0.5f - 40.0f, currentY);
     divider.setFillColor(sf::Color(55, 42, 80));
     window.draw(divider);
 
-    // Left Side: MEDAL
-    float medalCenterX = Config::WINDOW_WIDTH * 0.5f - 95.0f;
-    drawTextShadowed(window, "MEDAL", sf::Vector2f(medalCenterX, currentY - 55.0f),
+    // Left Side: MEDAL & TIER
+    float medalCenterX = Config::WINDOW_WIDTH * 0.5f - 110.0f;
+    drawTextShadowed(window, "MEDAL", sf::Vector2f(medalCenterX, currentY - 60.0f),
                      16, sf::Color(255, 210, 75), sf::Color(15, 10, 25));
 
     MedalTier tier = getTier(score);
-    drawMedal(window, sf::Vector2f(medalCenterX, currentY + 5.0f), tier);
+    drawMedal(window, sf::Vector2f(medalCenterX, currentY - 2.0f), tier);
 
-    // Right Side: SCORE and BEST
-    float labelX = Config::WINDOW_WIDTH * 0.5f + 45.0f;
-    float valX = Config::WINDOW_WIDTH * 0.5f + 130.0f;
+    // Right Side: SCORE, BEST, STAGE, SPEED
+    float labelX = Config::WINDOW_WIDTH * 0.5f - 20.0f;
+    float valX = Config::WINDOW_WIDTH * 0.5f + 140.0f;
 
     // Score
-    drawTextShadowed(window, "SCORE", sf::Vector2f(labelX, currentY - 45.0f),
-                     16, sf::Color(255, 195, 65), sf::Color(15, 10, 25), false);
-    drawTextShadowed(window, std::to_string(score), sf::Vector2f(valX, currentY - 45.0f),
-                     22, sf::Color(255, 255, 255), sf::Color(15, 10, 25), false);
+    drawTextShadowed(window, "SCORE", sf::Vector2f(labelX, currentY - 65.0f),
+                     15, sf::Color(255, 195, 65), sf::Color(15, 10, 25), false);
+    drawTextShadowed(window, std::to_string(score), sf::Vector2f(valX, currentY - 65.0f),
+                     22, (score >= 999) ? sf::Color(255, 220, 80) : sf::Color::White, sf::Color(15, 10, 25), false);
 
     // Best Score
-    drawTextShadowed(window, "BEST", sf::Vector2f(labelX, currentY + 15.0f),
-                     16, sf::Color(255, 195, 65), sf::Color(15, 10, 25), false);
-    drawTextShadowed(window, std::to_string(bestScore), sf::Vector2f(valX, currentY + 15.0f),
-                     22, sf::Color(255, 255, 255), sf::Color(15, 10, 25), false);
+    drawTextShadowed(window, "BEST", sf::Vector2f(labelX, currentY - 25.0f),
+                     15, sf::Color(255, 195, 65), sf::Color(15, 10, 25), false);
+    drawTextShadowed(window, std::to_string(bestScore), sf::Vector2f(valX, currentY - 25.0f),
+                     22, sf::Color::White, sf::Color(15, 10, 25), false);
+
+    // Stage reached
+    int stage = Config::getStageIndex(score);
+    drawTextShadowed(window, "STAGE", sf::Vector2f(labelX, currentY + 15.0f),
+                     15, sf::Color(180, 240, 255), sf::Color(15, 10, 25), false);
+    std::string stageLabel = std::to_string(stage + 1) + "/10 (" + Config::getStageName(stage).substr(0, 8) + ")";
+    drawTextShadowed(window, stageLabel, sf::Vector2f(valX, currentY + 15.0f),
+                     15, sf::Color(255, 235, 120), sf::Color(15, 10, 25), false);
+
+    // Speed reached
+    float speedMult = Config::getSpeedMultiplier(score);
+    std::stringstream speedSs;
+    speedSs << std::fixed << std::setprecision(2) << speedMult << "x";
+    drawTextShadowed(window, "SPEED", sf::Vector2f(labelX, currentY + 50.0f),
+                     15, sf::Color(180, 240, 255), sf::Color(15, 10, 25), false);
+    drawTextShadowed(window, speedSs.str(), sf::Vector2f(valX, currentY + 50.0f),
+                     16, sf::Color(0, 235, 255), sf::Color(15, 10, 25), false);
 
     // New Best badge!
     if (isNewBest && score > 0) {
         sf::RectangleShape newBadge(sf::Vector2f(44.0f, 18.0f));
         newBadge.setOrigin(22.0f, 9.0f);
-        newBadge.setPosition(labelX - 16.0f, currentY + 15.0f);
+        newBadge.setPosition(labelX + 50.0f, currentY - 25.0f);
         newBadge.setFillColor(sf::Color(240, 45, 45));
         window.draw(newBadge);
 
-        drawTextShadowed(window, "NEW", sf::Vector2f(labelX - 16.0f, currentY + 15.0f),
-                         11, sf::Color(255, 255, 255), sf::Color(15, 10, 25));
+        drawTextShadowed(window, "NEW", sf::Vector2f(labelX + 50.0f, currentY - 25.0f),
+                         11, sf::Color::White, sf::Color(15, 10, 25));
+    }
+
+    // Celebratory 999 badge
+    if (bestScore >= 999) {
+        drawTextShadowed(window, "*** OMNIPOTENT ASCENDANT UNLOCKED ***",
+                         sf::Vector2f(Config::WINDOW_WIDTH * 0.5f, currentY + 115.0f),
+                         13, sf::Color(255, 225, 80), sf::Color(20, 10, 30));
     }
 
     // Restart prompt below card
@@ -386,77 +514,83 @@ void UI::drawGameOverCard(sf::RenderWindow& window, int score, int bestScore, bo
         float promptAlpha = 180.0f + std::sin(m_pulseTimer * 6.0f) * 65.0f;
         sf::Uint8 a = static_cast<sf::Uint8>(std::clamp(promptAlpha, 0.0f, 255.0f));
 
-        drawTextShadowed(window, "PRESS [R] OR [SPACE] TO RESTART",
-                         sf::Vector2f(Config::WINDOW_WIDTH * 0.5f, currentY + 130.0f),
-                         17, sf::Color(255, 235, 120, a), sf::Color(15, 10, 25, a));
+        drawTextShadowed(window, "PRESS [R] OR TAP SCREEN TO RESTART",
+                         sf::Vector2f(Config::WINDOW_WIDTH * 0.5f, currentY + 140.0f),
+                         16, sf::Color(255, 235, 120, a), sf::Color(15, 10, 25, a));
 
-        // Quick Navigation Buttons on Game Over
-        sf::FloatRect wardBounds = getWardrobeButtonBounds();
+        // Navigation Buttons on Game Over
+        sf::FloatRect wardBounds = getWardrobeButtonBounds(screenH);
         sf::RectangleShape wardBtn(sf::Vector2f(wardBounds.width, wardBounds.height));
         wardBtn.setPosition(wardBounds.left, wardBounds.top);
-        wardBtn.setFillColor(sf::Color(35, 25, 55, 220));
+        wardBtn.setFillColor(sf::Color(36, 26, 58, 230));
         wardBtn.setOutlineColor(sf::Color(255, 185, 45));
-        wardBtn.setOutlineThickness(2.0f);
+        wardBtn.setOutlineThickness(2.2f);
         window.draw(wardBtn);
-        drawTextShadowed(window, "[C] WARDROBE", sf::Vector2f(wardBounds.left + wardBounds.width * 0.5f, wardBounds.top + wardBounds.height * 0.5f),
-                         13, sf::Color(255, 225, 80), sf::Color(10, 10, 20));
+        drawTextShadowed(window, "[C] WARDROBE",
+                         sf::Vector2f(wardBounds.left + wardBounds.width * 0.5f, wardBounds.top + wardBounds.height * 0.5f),
+                         15, sf::Color(255, 225, 80), sf::Color(10, 10, 20));
 
-        sf::FloatRect scoreBounds = getScoreboardButtonBounds();
+        sf::FloatRect scoreBounds = getScoreboardButtonBounds(screenH);
         sf::RectangleShape scoreBtn(sf::Vector2f(scoreBounds.width, scoreBounds.height));
         scoreBtn.setPosition(scoreBounds.left, scoreBounds.top);
-        scoreBtn.setFillColor(sf::Color(35, 25, 55, 220));
+        scoreBtn.setFillColor(sf::Color(36, 26, 58, 230));
         scoreBtn.setOutlineColor(sf::Color(0, 235, 255));
-        scoreBtn.setOutlineThickness(2.0f);
+        scoreBtn.setOutlineThickness(2.2f);
         window.draw(scoreBtn);
-        drawTextShadowed(window, "[S] SCORES", sf::Vector2f(scoreBounds.left + scoreBounds.width * 0.5f, scoreBounds.top + scoreBounds.height * 0.5f),
-                         13, sf::Color(180, 245, 255), sf::Color(10, 10, 20));
+        drawTextShadowed(window, "[S] SCORES",
+                         sf::Vector2f(scoreBounds.left + scoreBounds.width * 0.5f, scoreBounds.top + scoreBounds.height * 0.5f),
+                         15, sf::Color(180, 245, 255), sf::Color(10, 10, 20));
     }
 }
 
-sf::FloatRect UI::getWardrobeButtonBounds() const {
-    return sf::FloatRect(45.0f, 545.0f, 180.0f, 44.0f);
+sf::FloatRect UI::getWardrobeButtonBounds(float screenH) const {
+    return sf::FloatRect(35.0f, screenH - 120.0f, 195.0f, 46.0f);
 }
 
-sf::FloatRect UI::getScoreboardButtonBounds() const {
-    return sf::FloatRect(255.0f, 545.0f, 180.0f, 44.0f);
+sf::FloatRect UI::getScoreboardButtonBounds(float screenH) const {
+    return sf::FloatRect(250.0f, screenH - 120.0f, 195.0f, 46.0f);
 }
 
-sf::FloatRect UI::getBackButtonBounds() const {
-    return sf::FloatRect(Config::WINDOW_WIDTH * 0.5f - 80.0f, 620.0f, 160.0f, 42.0f);
+sf::FloatRect UI::getBackButtonBounds(float screenH) const {
+    return sf::FloatRect(Config::WINDOW_WIDTH * 0.5f - 85.0f, screenH - 72.0f, 170.0f, 44.0f);
 }
 
 sf::FloatRect UI::getHatPrevBounds() const {
-    return sf::FloatRect(45.0f, 320.0f, 40.0f, 40.0f);
+    return sf::FloatRect(40.0f, 310.0f, 44.0f, 44.0f);
 }
 
 sf::FloatRect UI::getHatNextBounds() const {
-    return sf::FloatRect(Config::WINDOW_WIDTH - 85.0f, 320.0f, 40.0f, 40.0f);
+    return sf::FloatRect(Config::WINDOW_WIDTH - 84.0f, 310.0f, 44.0f, 44.0f);
 }
 
 sf::FloatRect UI::getOutfitPrevBounds() const {
-    return sf::FloatRect(45.0f, 440.0f, 40.0f, 40.0f);
+    return sf::FloatRect(40.0f, 430.0f, 44.0f, 44.0f);
 }
 
 sf::FloatRect UI::getOutfitNextBounds() const {
-    return sf::FloatRect(Config::WINDOW_WIDTH - 85.0f, 440.0f, 40.0f, 40.0f);
+    return sf::FloatRect(Config::WINDOW_WIDTH - 84.0f, 430.0f, 44.0f, 44.0f);
+}
+
+sf::FloatRect UI::getApotheosisToggleBounds() const {
+    return sf::FloatRect(Config::WINDOW_WIDTH * 0.5f - 145.0f, 530.0f, 290.0f, 42.0f);
 }
 
 void UI::drawCosmeticsScreen(sf::RenderWindow& window, const CosmeticsManager& cosmetics, int bestScore) {
-    // Backdrop Veil
-    sf::RectangleShape veil(sf::Vector2f(Config::WINDOW_WIDTH, Config::WINDOW_HEIGHT));
-    veil.setFillColor(sf::Color(16, 12, 32, 235));
+    float screenH = window.getView().getSize().y;
+
+    sf::RectangleShape veil(sf::Vector2f(Config::WINDOW_WIDTH, screenH));
+    veil.setFillColor(sf::Color(16, 12, 32, 242));
     window.draw(veil);
 
     // Title
-    drawTextShadowed(window, "WARDROBE & COSMETICS", sf::Vector2f(Config::WINDOW_WIDTH * 0.5f, 65.0f),
+    drawTextShadowed(window, "WARDROBE & AURAS", sf::Vector2f(Config::WINDOW_WIDTH * 0.5f, 58.0f),
                      28, sf::Color(255, 215, 45), sf::Color(15, 10, 25));
 
-    // High score indicator
-    drawTextShadowed(window, "BEST SCORE: " + std::to_string(bestScore), sf::Vector2f(Config::WINDOW_WIDTH * 0.5f, 105.0f),
+    drawTextShadowed(window, "BEST SCORE: " + std::to_string(bestScore) + " PTS", sf::Vector2f(Config::WINDOW_WIDTH * 0.5f, 95.0f),
                      16, sf::Color(180, 240, 255), sf::Color(15, 10, 25));
 
     // --- HAT SECTION ---
-    drawTextShadowed(window, "HEADWEAR", sf::Vector2f(Config::WINDOW_WIDTH * 0.5f, 290.0f),
+    drawTextShadowed(window, "HEADWEAR", sf::Vector2f(Config::WINDOW_WIDTH * 0.5f, 280.0f),
                      18, sf::Color(255, 185, 45), sf::Color(15, 10, 25));
 
     sf::FloatRect hpb = getHatPrevBounds();
@@ -464,37 +598,36 @@ void UI::drawCosmeticsScreen(sf::RenderWindow& window, const CosmeticsManager& c
     prevHatBtn.setPosition(hpb.left, hpb.top);
     prevHatBtn.setFillColor(sf::Color(45, 35, 70));
     prevHatBtn.setOutlineColor(sf::Color(255, 205, 60));
-    prevHatBtn.setOutlineThickness(1.8f);
+    prevHatBtn.setOutlineThickness(2.0f);
     window.draw(prevHatBtn);
-    drawTextShadowed(window, "<", sf::Vector2f(hpb.left + 20.0f, hpb.top + 18.0f), 22, sf::Color::White, sf::Color::Black);
+    drawTextShadowed(window, "<", sf::Vector2f(hpb.left + 22.0f, hpb.top + 20.0f), 24, sf::Color::White, sf::Color::Black);
 
     sf::FloatRect hnb = getHatNextBounds();
     sf::RectangleShape nextHatBtn(sf::Vector2f(hnb.width, hnb.height));
     nextHatBtn.setPosition(hnb.left, hnb.top);
     nextHatBtn.setFillColor(sf::Color(45, 35, 70));
     nextHatBtn.setOutlineColor(sf::Color(255, 205, 60));
-    nextHatBtn.setOutlineThickness(1.8f);
+    nextHatBtn.setOutlineThickness(2.0f);
     window.draw(nextHatBtn);
-    drawTextShadowed(window, ">", sf::Vector2f(hnb.left + 20.0f, hnb.top + 18.0f), 22, sf::Color::White, sf::Color::Black);
+    drawTextShadowed(window, ">", sf::Vector2f(hnb.left + 22.0f, hnb.top + 20.0f), 24, sf::Color::White, sf::Color::Black);
 
-    // Current Hat Name & Status
     HatId currentHat = cosmetics.getEquippedHat();
     std::string hatName = cosmetics.getHatName(currentHat);
-    drawTextShadowed(window, hatName, sf::Vector2f(Config::WINDOW_WIDTH * 0.5f, 335.0f),
-                     20, sf::Color(255, 255, 255), sf::Color(10, 10, 20));
+    drawTextShadowed(window, hatName, sf::Vector2f(Config::WINDOW_WIDTH * 0.5f, 325.0f),
+                     19, sf::Color::White, sf::Color(10, 10, 20));
 
     int hatReq = cosmetics.getHats()[static_cast<int>(currentHat)].requiredScore;
     if (bestScore >= hatReq) {
-        drawTextShadowed(window, "[ EQUIPPED ]", sf::Vector2f(Config::WINDOW_WIDTH * 0.5f, 365.0f),
+        drawTextShadowed(window, "[ EQUIPPED ]", sf::Vector2f(Config::WINDOW_WIDTH * 0.5f, 355.0f),
                          14, sf::Color(80, 240, 120), sf::Color(10, 10, 20));
     } else {
         drawTextShadowed(window, "[ LOCKED - SCORE " + std::to_string(hatReq) + " ]",
-                         sf::Vector2f(Config::WINDOW_WIDTH * 0.5f, 365.0f),
+                         sf::Vector2f(Config::WINDOW_WIDTH * 0.5f, 355.0f),
                          14, sf::Color(245, 80, 80), sf::Color(10, 10, 20));
     }
 
-    // --- OUTFIT SECTION ---
-    drawTextShadowed(window, "OUTFIT / JACKET", sf::Vector2f(Config::WINDOW_WIDTH * 0.5f, 410.0f),
+    // --- OUTFIT / AURAS SECTION ---
+    drawTextShadowed(window, "OUTFIT & AURAS", sf::Vector2f(Config::WINDOW_WIDTH * 0.5f, 400.0f),
                      18, sf::Color(255, 185, 45), sf::Color(15, 10, 25));
 
     sf::FloatRect opb = getOutfitPrevBounds();
@@ -502,41 +635,57 @@ void UI::drawCosmeticsScreen(sf::RenderWindow& window, const CosmeticsManager& c
     prevOutBtn.setPosition(opb.left, opb.top);
     prevOutBtn.setFillColor(sf::Color(45, 35, 70));
     prevOutBtn.setOutlineColor(sf::Color(255, 205, 60));
-    prevOutBtn.setOutlineThickness(1.8f);
+    prevOutBtn.setOutlineThickness(2.0f);
     window.draw(prevOutBtn);
-    drawTextShadowed(window, "<", sf::Vector2f(opb.left + 20.0f, opb.top + 18.0f), 22, sf::Color::White, sf::Color::Black);
+    drawTextShadowed(window, "<", sf::Vector2f(opb.left + 22.0f, opb.top + 20.0f), 24, sf::Color::White, sf::Color::Black);
 
     sf::FloatRect onb = getOutfitNextBounds();
     sf::RectangleShape nextOutBtn(sf::Vector2f(onb.width, onb.height));
     nextOutBtn.setPosition(onb.left, onb.top);
     nextOutBtn.setFillColor(sf::Color(45, 35, 70));
     nextOutBtn.setOutlineColor(sf::Color(255, 205, 60));
-    nextOutBtn.setOutlineThickness(1.8f);
+    nextOutBtn.setOutlineThickness(2.0f);
     window.draw(nextOutBtn);
-    drawTextShadowed(window, ">", sf::Vector2f(onb.left + 20.0f, onb.top + 18.0f), 22, sf::Color::White, sf::Color::Black);
+    drawTextShadowed(window, ">", sf::Vector2f(onb.left + 22.0f, onb.top + 20.0f), 24, sf::Color::White, sf::Color::Black);
 
-    // Current Outfit Name & Status
     OutfitId currentOutfit = cosmetics.getEquippedOutfit();
     std::string outName = cosmetics.getOutfitName(currentOutfit);
-    drawTextShadowed(window, outName, sf::Vector2f(Config::WINDOW_WIDTH * 0.5f, 455.0f),
-                     20, sf::Color(255, 255, 255), sf::Color(10, 10, 20));
+    drawTextShadowed(window, outName, sf::Vector2f(Config::WINDOW_WIDTH * 0.5f, 445.0f),
+                     19, sf::Color::White, sf::Color(10, 10, 20));
 
     int outReq = cosmetics.getOutfits()[static_cast<int>(currentOutfit)].requiredScore;
     if (bestScore >= outReq) {
-        drawTextShadowed(window, "[ EQUIPPED ]", sf::Vector2f(Config::WINDOW_WIDTH * 0.5f, 485.0f),
+        drawTextShadowed(window, "[ EQUIPPED ]", sf::Vector2f(Config::WINDOW_WIDTH * 0.5f, 475.0f),
                          14, sf::Color(80, 240, 120), sf::Color(10, 10, 20));
     } else {
         drawTextShadowed(window, "[ LOCKED - SCORE " + std::to_string(outReq) + " ]",
-                         sf::Vector2f(Config::WINDOW_WIDTH * 0.5f, 485.0f),
+                         sf::Vector2f(Config::WINDOW_WIDTH * 0.5f, 475.0f),
                          14, sf::Color(245, 80, 80), sf::Color(10, 10, 20));
     }
 
+    // Score 999 Apotheosis Toggle Button
+    if (bestScore >= 999) {
+        sf::FloatRect atb = getApotheosisToggleBounds();
+        sf::RectangleShape apoBtn(sf::Vector2f(atb.width, atb.height));
+        apoBtn.setPosition(atb.left, atb.top);
+        bool apoActive = cosmetics.isApotheosisMode();
+        apoBtn.setFillColor(apoActive ? sf::Color(80, 30, 95) : sf::Color(35, 25, 55));
+        apoBtn.setOutlineColor(apoActive ? sf::Color(255, 215, 60) : sf::Color(150, 150, 180));
+        apoBtn.setOutlineThickness(2.0f);
+        window.draw(apoBtn);
+
+        std::string apoText = apoActive ? "[T] APOTHEOSIS MODE: ON" : "[T] APOTHEOSIS MODE: OFF";
+        drawTextShadowed(window, apoText, sf::Vector2f(atb.left + atb.width * 0.5f, atb.top + atb.height * 0.5f),
+                         14, apoActive ? sf::Color(255, 225, 80) : sf::Color(200, 200, 220), sf::Color(10, 8, 20));
+    }
+
     // Help Hint
-    drawTextShadowed(window, "TAP < > OR USE ARROW KEYS TO CYCLE", sf::Vector2f(Config::WINDOW_WIDTH * 0.5f, 545.0f),
+    drawTextShadowed(window, "TAP < > OR USE ARROWS TO CYCLE COSMETICS",
+                     sf::Vector2f(Config::WINDOW_WIDTH * 0.5f, screenH - 120.0f),
                      13, sf::Color(200, 210, 230), sf::Color(10, 10, 20));
 
     // Back Button
-    sf::FloatRect bb = getBackButtonBounds();
+    sf::FloatRect bb = getBackButtonBounds(screenH);
     sf::RectangleShape backBtn(sf::Vector2f(bb.width, bb.height));
     backBtn.setPosition(bb.left, bb.top);
     backBtn.setFillColor(sf::Color(55, 35, 80));
@@ -548,75 +697,96 @@ void UI::drawCosmeticsScreen(sf::RenderWindow& window, const CosmeticsManager& c
 }
 
 void UI::drawScoreboardScreen(sf::RenderWindow& window, const CosmeticsManager& cosmetics, int bestScore) {
-    sf::RectangleShape veil(sf::Vector2f(Config::WINDOW_WIDTH, Config::WINDOW_HEIGHT));
-    veil.setFillColor(sf::Color(16, 12, 32, 240));
+    float screenH = window.getView().getSize().y;
+
+    sf::RectangleShape veil(sf::Vector2f(Config::WINDOW_WIDTH, screenH));
+    veil.setFillColor(sf::Color(16, 12, 32, 245));
     window.draw(veil);
 
-    drawTextShadowed(window, "ARCADE SCOREBOARD", sf::Vector2f(Config::WINDOW_WIDTH * 0.5f, 65.0f),
+    drawTextShadowed(window, "HALL OF ASCENDANTS", sf::Vector2f(Config::WINDOW_WIDTH * 0.5f, 55.0f),
                      28, sf::Color(0, 240, 255), sf::Color(15, 10, 25));
 
-    // All Time Best Card
-    sf::RectangleShape bestCard(sf::Vector2f(380.0f, 95.0f));
-    bestCard.setOrigin(190.0f, 47.5f);
-    bestCard.setPosition(Config::WINDOW_WIDTH * 0.5f, 155.0f);
+    // Best Record Card
+    sf::RectangleShape bestCard(sf::Vector2f(420.0f, 90.0f));
+    bestCard.setOrigin(210.0f, 45.0f);
+    bestCard.setPosition(Config::WINDOW_WIDTH * 0.5f, 140.0f);
     bestCard.setFillColor(sf::Color(28, 22, 50));
     bestCard.setOutlineColor(sf::Color(255, 205, 45));
     bestCard.setOutlineThickness(2.5f);
     window.draw(bestCard);
 
-    drawTextShadowed(window, "PERSONAL BEST RECORD", sf::Vector2f(Config::WINDOW_WIDTH * 0.5f, 130.0f),
-                     16, sf::Color(255, 205, 50), sf::Color(10, 10, 20));
-    drawTextShadowed(window, std::to_string(bestScore) + " PTS", sf::Vector2f(Config::WINDOW_WIDTH * 0.5f, 170.0f),
-                     34, sf::Color(255, 255, 255), sf::Color(10, 10, 20));
+    drawTextShadowed(window, "PERSONAL BEST RECORD", sf::Vector2f(Config::WINDOW_WIDTH * 0.5f, 118.0f),
+                     15, sf::Color(255, 205, 50), sf::Color(10, 10, 20));
+    drawTextShadowed(window, std::to_string(bestScore) + " PTS", sf::Vector2f(Config::WINDOW_WIDTH * 0.5f, 155.0f),
+                     32, sf::Color::White, sf::Color(10, 10, 20));
 
-    // Current Medal Status
-    MedalTier tier = getTier(bestScore);
-    std::string tierName = "None";
-    if (tier == MedalTier::Platinum) tierName = "Platinum Trophy (40+)";
-    else if (tier == MedalTier::Gold) tierName = "Gold Medal (30+)";
-    else if (tier == MedalTier::Silver) tierName = "Silver Medal (20+)";
-    else if (tier == MedalTier::Bronze) tierName = "Bronze Medal (10+)";
+    // Current Rank Title
+    std::string rankTitle = "Novice Fledgling";
+    if (bestScore >= 999)      rankTitle = "OMNIPOTENT FOOL (MAX)";
+    else if (bestScore >= 900) rankTitle = "Void Conqueror";
+    else if (bestScore >= 750) rankTitle = "Celestial Lord";
+    else if (bestScore >= 600) rankTitle = "Immortal Ascendant";
+    else if (bestScore >= 400) rankTitle = "Cosmic Wanderer";
+    else if (bestScore >= 300) rankTitle = "Astronaut Pioneer";
+    else if (bestScore >= 220) rankTitle = "Primordial Phoenix";
+    else if (bestScore >= 150) rankTitle = "Arcane Mage";
+    else if (bestScore >= 100) rankTitle = "Forest Monarch";
+    else if (bestScore >= 65)  rankTitle = "Cyber Ace";
+    else if (bestScore >= 35)  rankTitle = "Sky Ace";
+    else if (bestScore >= 15)  rankTitle = "Sunset Aviator";
+    else if (bestScore >= 1)   rankTitle = "Fledgling Flapper";
 
-    drawTextShadowed(window, "RANK: " + tierName, sf::Vector2f(Config::WINDOW_WIDTH * 0.5f, 230.0f),
-                     18, sf::Color(255, 225, 90), sf::Color(10, 10, 20));
+    drawTextShadowed(window, "RANK: " + rankTitle, sf::Vector2f(Config::WINDOW_WIDTH * 0.5f, 210.0f),
+                     17, (bestScore >= 999) ? sf::Color(255, 225, 80) : sf::Color(180, 240, 255), sf::Color(10, 10, 20));
 
-    // Progression Checklist Table
-    drawTextShadowed(window, "COSMETIC MILESTONES", sf::Vector2f(Config::WINDOW_WIDTH * 0.5f, 275.0f),
-                     17, sf::Color(180, 240, 255), sf::Color(10, 10, 20));
+    // Progression Milestones (12 milestones arranged in 2 neat columns)
+    drawTextShadowed(window, "COSMETIC ASCENSION CHECKLIST", sf::Vector2f(Config::WINDOW_WIDTH * 0.5f, 250.0f),
+                     16, sf::Color(255, 195, 60), sf::Color(10, 10, 20));
 
-    int milestones[] = { 1, 5, 10, 15, 20, 25, 30, 35, 40 };
-    const char* names[] = {
-        "Score 1: Red Headband",
-        "Score 5: Aviator Goggles & Scarf",
-        "Score 10: Top Hat & Bowtie",
-        "Score 15: Cyber Visor & Vest",
-        "Score 20: Royal Crown & Cape",
-        "Score 25: Wizard Hat & Cowl",
-        "Score 30: Phoenix Crown & Plumes",
-        "Score 35: Astronaut & Jetpack",
-        "Score 40: Platinum Celestial Mantle"
+    struct Milestone {
+        int req;
+        const char* name;
+    };
+
+    Milestone milestones[12] = {
+        { 1,   "Score 1: Headband" },
+        { 15,  "Score 15: Aviator" },
+        { 35,  "Score 35: Top Hat" },
+        { 65,  "Score 65: Cyber Pylon" },
+        { 100, "Score 100: Monarch" },
+        { 150, "Score 150: Wizard" },
+        { 220, "Score 220: Phoenix" },
+        { 300, "Score 300: Astronaut" },
+        { 400, "Score 400: Celestial" },
+        { 500, "Score 500: Void Horns" },
+        { 750, "Score 750: Solar Flare" },
+        { 999, "Score 999: Omnipotent" }
     };
 
     int unlockedCount = 0;
-    for (int i = 0; i < 9; ++i) {
-        float y = 310.0f + i * 28.0f;
-        bool unl = (bestScore >= milestones[i]);
+    for (int i = 0; i < 12; ++i) {
+        int col = i / 6;
+        int row = i % 6;
+        float x = (col == 0) ? 35.0f : 248.0f;
+        float y = 282.0f + row * 34.0f;
+
+        bool unl = (bestScore >= milestones[i].req);
         if (unl) unlockedCount++;
 
-        sf::Color itemCol = unl ? sf::Color(120, 255, 150) : sf::Color(150, 150, 165);
+        sf::Color itemCol = unl ? sf::Color(110, 255, 140) : sf::Color(140, 140, 160);
         std::string check = unl ? "[x] " : "[ ] ";
-        drawTextShadowed(window, check + names[i], sf::Vector2f(50.0f, y),
+        drawTextShadowed(window, check + milestones[i].name, sf::Vector2f(x, y),
                          13, itemCol, sf::Color(10, 10, 20), false);
     }
 
     // Completion %
-    int pct = (unlockedCount * 100) / 9;
-    drawTextShadowed(window, "UNLOCKED: " + std::to_string(pct) + "% (" + std::to_string(unlockedCount) + "/9)",
-                     sf::Vector2f(Config::WINDOW_WIDTH * 0.5f, 580.0f),
-                     15, sf::Color(255, 215, 60), sf::Color(10, 10, 20));
+    int pct = (unlockedCount * 100) / 12;
+    drawTextShadowed(window, "UNLOCKED: " + std::to_string(pct) + "% (" + std::to_string(unlockedCount) + "/12)",
+                     sf::Vector2f(Config::WINDOW_WIDTH * 0.5f, 515.0f),
+                     16, sf::Color(255, 215, 60), sf::Color(10, 10, 20));
 
     // Back Button
-    sf::FloatRect bb = getBackButtonBounds();
+    sf::FloatRect bb = getBackButtonBounds(screenH);
     sf::RectangleShape backBtn(sf::Vector2f(bb.width, bb.height));
     backBtn.setPosition(bb.left, bb.top);
     backBtn.setFillColor(sf::Color(55, 35, 80));

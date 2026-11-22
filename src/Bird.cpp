@@ -91,9 +91,10 @@ void Bird::draw(sf::RenderWindow& window, CosmeticsManager* cosmetics, float tim
     sf::RenderStates states;
     states.transform = transform;
 
-    // Draw Outfit Back Layers (Capes, Jetpacks, Wings)
+    // Draw Auras and Outfit Back Layers (Capes, Jetpacks, Wings)
     if (cosmetics) {
-        cosmetics->drawOutfit(window, transform, cosmetics->getEquippedOutfit(), time);
+        cosmetics->drawAuras(window, m_position, cosmetics->getEquippedOutfit(), cosmetics->getEquippedHat(), time);
+        cosmetics->drawOutfit(window, m_position, m_rotation, 1.0f, cosmetics->getEquippedOutfit(), time);
     }
 
     // Outline color
@@ -215,6 +216,6 @@ void Bird::draw(sf::RenderWindow& window, CosmeticsManager* cosmetics, float tim
 
     // Draw Equipped Hat (Headwear)
     if (cosmetics) {
-        cosmetics->drawHat(window, transform, cosmetics->getEquippedHat(), time);
+        cosmetics->drawHat(window, m_position, m_rotation, 1.0f, cosmetics->getEquippedHat(), time);
     }
 }

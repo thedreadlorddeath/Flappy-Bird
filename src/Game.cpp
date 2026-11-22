@@ -21,15 +21,14 @@ Game::Game()
     , m_score(0)
     , m_bestScore(0)
     , m_isNewBest(false)
-    , m_globalTime(0.0f) {
+    , m_globalTime(0.0f)
+    , m_logicalHeight(Config::WINDOW_HEIGHT)
+    , m_currentStage(0)
+    , m_hasReached999(false) {
     m_window.setFramerateLimit(60);
-
-    m_defaultView.setSize(Config::WINDOW_WIDTH, Config::WINDOW_HEIGHT);
-    m_defaultView.setCenter(Config::WINDOW_WIDTH * 0.5f, Config::WINDOW_HEIGHT * 0.5f);
 
     sf::Vector2u winSize = m_window.getSize();
     updateViewLetterbox(winSize.x, winSize.y);
-    m_window.setView(m_defaultView);
 
     loadHighScore();
 }
@@ -75,9 +74,29 @@ void Game::run() {
     }
 }
 
+void Game::updateViewLetterbox(unsigned int width, unsigned int height) {
+    if (width == 0 || height == 0) return;
+
+    // TRUE EDGE-TO-EDGE FULLSCREEN (NO BLACK BARS)
+    // Logical width is fixed at 480.0f.
+    // Logical height is computed dynamically from window aspect ratio so the entire phone display is covered.
+    float logicalHeight = 480.0f * (static_cast<float>(height) / static_cast<float>(width));
+    m_logicalHeight = std::max(640.0f, logicalHeight);
+
+    m_defaultView.setSize(Config::WINDOW_WIDTH, m_logicalHeight);
+    m_defaultView.setCenter(Config::WINDOW_WIDTH * 0.5f, m_logicalHeight * 0.5f);
+    m_defaultView.setViewport(sf::FloatRect(0.0f, 0.0f, 1.0f, 1.0f));
+
+    m_window.setView(m_defaultView);
+
+    // Update screen height across game systems
+    m_background.setScreenHeight(m_logicalHeight);
+    m_pipeManager.setPlayHeight(m_logicalHeight - Config::GROUND_HEIGHT);
+}
+
 void Game::handleScreenClicks(sf::Vector2f clickPos) {
     if (m_state == GameState::Cosmetics) {
-        if (m_ui.getBackButtonBounds().contains(clickPos)) {
+        if (m_ui.getBackButtonBounds(m_logicalHeight).contains(clickPos)) {
             m_state = m_previousState;
         } else if (m_ui.getHatPrevBounds().contains(clickPos)) {
             m_cosmetics.cyclePrevHat(m_bestScore);
@@ -87,24 +106,26 @@ void Game::handleScreenClicks(sf::Vector2f clickPos) {
             m_cosmetics.cyclePrevOutfit(m_bestScore);
         } else if (m_ui.getOutfitNextBounds().contains(clickPos)) {
             m_cosmetics.cycleNextOutfit(m_bestScore);
+        } else if (m_bestScore >= 999 && m_ui.getApotheosisToggleBounds().contains(clickPos)) {
+            m_cosmetics.toggleApotheosisMode(m_bestScore);
         }
         return;
     }
 
     if (m_state == GameState::Scoreboard) {
-        if (m_ui.getBackButtonBounds().contains(clickPos)) {
+        if (m_ui.getBackButtonBounds(m_logicalHeight).contains(clickPos)) {
             m_state = m_previousState;
         }
         return;
     }
 
     if (m_state == GameState::GetReady || m_state == GameState::GameOver) {
-        if (m_ui.getWardrobeButtonBounds().contains(clickPos)) {
+        if (m_ui.getWardrobeButtonBounds(m_logicalHeight).contains(clickPos)) {
             m_previousState = m_state;
             m_state = GameState::Cosmetics;
             return;
         }
-        if (m_ui.getScoreboardButtonBounds().contains(clickPos)) {
+        if (m_ui.getScoreboardButtonBounds(m_logicalHeight).contains(clickPos)) {
             m_previousState = m_state;
             m_state = GameState::Scoreboard;
             return;
@@ -142,6 +163,11 @@ void Game::processEvents() {
                     m_state = GameState::Scoreboard;
                 } else if (m_state == GameState::Scoreboard) {
                     m_state = m_previousState;
+                }
+            } else if (event.key.code == sf::Keyboard::T) {
+                // Toggle Apotheosis visual mode if unlocked
+                if (m_state == GameState::Cosmetics && m_bestScore >= 999) {
+                    m_cosmetics.toggleApotheosisMode(m_bestScore);
                 }
             } else if (event.key.code == sf::Keyboard::Left) {
                 if (m_state == GameState::Cosmetics) {
@@ -192,27 +218,6 @@ void Game::processEvents() {
     }
 }
 
-void Game::updateViewLetterbox(unsigned int width, unsigned int height) {
-    if (width == 0 || height == 0) return;
-
-    float windowRatio = static_cast<float>(width) / static_cast<float>(height);
-    float viewRatio = Config::WINDOW_WIDTH / Config::WINDOW_HEIGHT;
-    float sizeX = 1.0f;
-    float sizeY = 1.0f;
-    float posX = 0.0f;
-    float posY = 0.0f;
-
-    if (windowRatio >= viewRatio) {
-        sizeX = viewRatio / windowRatio;
-        posX = (1.0f - sizeX) * 0.5f;
-    } else {
-        sizeY = windowRatio / viewRatio;
-        posY = (1.0f - sizeY) * 0.5f;
-    }
-
-    m_defaultView.setViewport(sf::FloatRect(posX, posY, sizeX, sizeY));
-}
-
 void Game::flapAction() {
     if (m_state == GameState::GetReady) {
         m_state = GameState::Playing;
@@ -253,6 +258,8 @@ void Game::onCollision() {
 void Game::restartGame() {
     m_state = GameState::GetReady;
     m_score = 0;
+    m_currentStage = 0;
+    m_hasReached999 = false;
     m_isNewBest = false;
 
     m_bird.reset();
@@ -277,27 +284,52 @@ void Game::update(float dt) {
     } else if (m_state == GameState::Playing) {
         m_bird.update(dt);
         m_background.update(dt, m_score);
-        m_pipeManager.update(dt);
+        m_pipeManager.update(dt, m_score);
 
         if (m_pipeManager.checkScored(m_bird.getPosition().x)) {
-            m_score++;
+            m_score = std::min(m_score + 1, Config::MAX_SCORE);
             m_ui.triggerScorePop();
             m_soundGen.playScore();
+
+            // Check stage advancement
+            int newStage = Config::getStageIndex(m_score);
+            if (newStage > m_currentStage) {
+                m_currentStage = newStage;
+                m_ui.triggerStageBanner(m_currentStage);
+                m_soundGen.playMedal();
+            }
+
+            // Check Score 999 Finale
+            if (m_score >= Config::MAX_SCORE && !m_hasReached999) {
+                m_hasReached999 = true;
+                m_ui.triggerApotheosisBanner();
+                m_particleSystem.emitImpactParticles(m_bird.getPosition());
+                m_particleSystem.triggerFlash(1.0f);
+                m_soundGen.playMedal();
+            }
         }
 
         if (m_pipeManager.checkCollision(m_bird.getPosition(), m_bird.getHitRadius())) {
             onCollision();
         }
 
-        if (m_bird.getPosition().y + m_bird.getHitRadius() >= Config::PLAY_HEIGHT) {
-            m_bird.setPosition(sf::Vector2f(m_bird.getPosition().x, Config::PLAY_HEIGHT - m_bird.getHitRadius()));
+        // Check ground collision
+        float playHeight = m_logicalHeight - Config::GROUND_HEIGHT;
+        if (m_bird.getPosition().y + m_bird.getHitRadius() >= playHeight) {
+            m_bird.setPosition(sf::Vector2f(m_bird.getPosition().x, playHeight - m_bird.getHitRadius()));
             onCollision();
         }
+
+        // Check ceiling clamp
+        if (m_bird.getPosition().y - m_bird.getHitRadius() < 0.0f) {
+            m_bird.setPosition(sf::Vector2f(m_bird.getPosition().x, m_bird.getHitRadius()));
+        }
     } else if (m_state == GameState::GameOver) {
-        if (m_bird.getPosition().y + m_bird.getHitRadius() < Config::PLAY_HEIGHT) {
+        float playHeight = m_logicalHeight - Config::GROUND_HEIGHT;
+        if (m_bird.getPosition().y + m_bird.getHitRadius() < playHeight) {
             m_bird.update(dt);
-            if (m_bird.getPosition().y + m_bird.getHitRadius() >= Config::PLAY_HEIGHT) {
-                m_bird.setPosition(sf::Vector2f(m_bird.getPosition().x, Config::PLAY_HEIGHT - m_bird.getHitRadius()));
+            if (m_bird.getPosition().y + m_bird.getHitRadius() >= playHeight) {
+                m_bird.setPosition(sf::Vector2f(m_bird.getPosition().x, playHeight - m_bird.getHitRadius()));
             }
         }
     }
@@ -311,22 +343,22 @@ void Game::render() {
     activeView.setCenter(m_defaultView.getCenter() + shakeOffset);
     m_window.setView(activeView);
 
-    // 1. Dynamic Gradient Sky
+    // 1. Dynamic 10-Stage Gradient Sky
     m_background.drawSky(m_window, m_score);
 
-    // 2. Parallax Layers
-    m_background.drawParallax(m_window);
+    // 2. Parallax Layers & Themed Decorative Items
+    m_background.drawParallax(m_window, m_score);
 
-    // 3. Pipes
-    m_pipeManager.draw(m_window);
+    // 3. Themed Obstacles with dynamic oscillation & speed
+    m_pipeManager.draw(m_window, m_score, m_globalTime);
 
-    // 4. Ground Strip
-    m_background.drawGround(m_window);
+    // 4. Themed Ground Strip
+    m_background.drawGround(m_window, m_score);
 
     // 5. Particles
     m_particleSystem.draw(m_window);
 
-    // 6. Bird with equipped cosmetics!
+    // 6. Bird with equipped cosmetics, auras, & apotheosis effects
     if (m_state != GameState::Cosmetics) {
         m_bird.draw(m_window, &m_cosmetics, m_globalTime);
     }
@@ -341,9 +373,9 @@ void Game::render() {
     if (m_state == GameState::GetReady) {
         m_ui.drawGetReady(m_window);
     } else if (m_state == GameState::Playing) {
-        m_ui.drawHUD(m_window, m_score);
+        m_ui.drawHUD(m_window, m_score, m_bestScore);
     } else if (m_state == GameState::Paused) {
-        m_ui.drawHUD(m_window, m_score);
+        m_ui.drawHUD(m_window, m_score, m_bestScore);
         m_ui.drawPauseOverlay(m_window);
     } else if (m_state == GameState::GameOver) {
         m_ui.drawGameOverCard(m_window, m_score, m_bestScore, m_isNewBest);
@@ -351,7 +383,7 @@ void Game::render() {
         // Floating preview bird in Wardrobe
         Bird previewBird;
         float bob = std::sin(m_globalTime * 4.0f) * 6.0f;
-        previewBird.setPosition(sf::Vector2f(Config::WINDOW_WIDTH * 0.5f, 195.0f + bob));
+        previewBird.setPosition(sf::Vector2f(Config::WINDOW_WIDTH * 0.5f, 185.0f + bob));
         previewBird.draw(m_window, &m_cosmetics, m_globalTime);
 
         m_ui.drawCosmeticsScreen(m_window, m_cosmetics, m_bestScore);
