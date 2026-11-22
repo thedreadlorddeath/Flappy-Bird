@@ -50,7 +50,17 @@ jobs:
         working-directory: android
         run: |
           chmod +x gradlew || true
-          ./gradlew assembleRelease --no-daemon --stacktrace || gradle assembleRelease --no-daemon
+          if ! ./gradlew assembleRelease --no-daemon --stacktrace > ../gradle_build.log 2>&1; then
+            echo "::error::=== LAST 30 LINES ==="
+            tail -n 30 ../gradle_build.log | while IFS= read -r line; do
+              echo "::error::$line"
+            done
+            echo "::error::=== COMPILER ERRORS ==="
+            grep -i -C 2 -E "error:|fatal error:" ../gradle_build.log | head -n 30 | while IFS= read -r line; do
+              echo "::error::$line"
+            done
+            exit 1
+          fi
 
       - name: Stage APK Output
         run: |
